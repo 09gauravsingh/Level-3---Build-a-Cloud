@@ -1,0 +1,48 @@
+# This is a Kubernetes Custom Resource manifest for a PostgreSQL cluster.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+
+metadata:
+  name: level3-postgres
+  namespace: database-services
+
+  labels:
+    platform.level3.io/product: managed-postgresql
+    platform.level3.io/environment: learning
+
+#spec describes the desired state.
+spec:
+  description: Level3 managed PostgreSQL PaaS learning service
+
+  # One primary and one standby PostgreSQL instance.
+  instances: 2
+
+  # Use a fixed PostgreSQL image for reproducibility.
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie
+
+  # Create the initial application database and application owner.
+  #(Bootstrap)How should CloudNativePG initialise the PostgreSQL cluster the first time?
+  bootstrap:
+    initdb:
+      database: platformdb
+      owner: platformuser
+      dataChecksums: true
+
+  # Every PostgreSQL instance receives its own persistent volume.
+  storage:
+    size: 5Gi
+
+  # Reserve predictable resources on the SKE workers.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  # Place the two instances on different worker nodes.
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required

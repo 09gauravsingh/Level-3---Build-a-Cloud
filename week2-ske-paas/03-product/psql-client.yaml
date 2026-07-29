@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: level3-psql-client
+  namespace: database-services
+
+  labels:
+    platform.level3.io/component: postgresql-client
+    platform.level3.io/environment: learning
+
+spec:
+  # This is a temporary client Pod, not a continuously restarted application.
+  restartPolicy: Never
+
+  containers:
+    - name: psql
+
+      # Use the same PostgreSQL version as our managed database cluster.
+      # This image already contains the psql command-line client.
+      image: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie
+      imagePullPolicy: IfNotPresent
+
+      # Keep the Pod alive so that we can execute psql inside it.
+      command:
+        - sleep
+        - infinity
+
+      env:
+        # Connect through the CloudNativePG read-write Service.
+        # Because this Pod is in the same namespace, the short Service
+        # name is sufficient.
+        - name: PGHOST
+          value: level3-postgres-rw
+
+        - name: PGPORT
+          value: "5432"
+
+        - name: PGDATABASE
+          value: platformdb
+
+        # Read the database owner username from the Secret.
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: level3-postgres-app
+              key: username
+
+        # Read the password from the Secret without exposing it.
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: level3-postgres-app
+              key: password
+
+        # Require an encrypted PostgreSQL connection.
+        - name: PGSSLMODE
+          value: require
+
+        # Makes this client identifiable in PostgreSQL activity information.
+        - name: PGAPPNAME
+          value: level3-psql-client
+
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+
+        limits:
+          cpu: 100m
+          memory: 128Mi
