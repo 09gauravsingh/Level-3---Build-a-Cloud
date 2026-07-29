@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Terraform working directories, state and plans.
+# State is excluded because it stores resource attributes in cleartext,
+# including the SKE administrator kubeconfig.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate-*
+*.tfplan
+crash.log
+crash.*.log
+
+# Cluster and cloud credentials
+kubeconfig.yaml
+kubeconfig*.yaml
+kubeconfig*.backup
+*.key.json
+*service-account*.json
+credentials/
+
+# Variable files that may carry private values
+terraform.tfvars
+*.auto.tfvars

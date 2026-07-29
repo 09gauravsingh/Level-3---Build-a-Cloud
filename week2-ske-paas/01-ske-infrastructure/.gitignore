@@ -1,0 +1,24 @@
+# Terraform-generated directories and files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Kubernetes access credentials
+kubeconfig.yaml
+kubeconfig-*.yaml
+
+# STACKIT credentials
+*.key.json
+*service-account*.json
+credentials/
+
+# Local variable files that may contain private values
+terraform.tfvars
+*.auto.tfvars
+
+# Evidence logs
+evidence/*.log
