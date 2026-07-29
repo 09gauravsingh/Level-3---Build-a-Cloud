@@ -1,0 +1,13 @@
+[0m[1mstackit_ske_cluster.paas: Creating...[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mError creating cluster[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with stackit_ske_cluster.paas,
+[31m│[0m [0m  on cluster.tf line 1, in resource "stackit_ske_cluster" "paas":
+[31m│[0m [0m   1: resource "stackit_ske_cluster" "paas" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mCalling API to enable SKE: 403 Forbidden, status code 403, Body:
+[31m│[0m [0m{"timestamp":"2026-07-27T15:12:37Z","path":"/v2/projects/20a60c06-1e1a-406f-a840-37d1ff14f0e8/regions/eu01/services/cloud.stackit.ske","status":403,"error":"Forbidden","message":"Unauthorized"}
+[31m│[0m [0m
+[31m│[0m [0mTrace ID: "c40c94bad42839dc4498d4852feac274"
+[31m╵[0m[0m

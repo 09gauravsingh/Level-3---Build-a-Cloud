@@ -1,0 +1,110 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform will perform the following actions:
+
+[1m  # local_sensitive_file.kubeconfig[0m will be created
+[0m  [32m+[0m[0m resource "local_sensitive_file" "kubeconfig" {
+      [32m+[0m[0m content              = (sensitive value)
+      [32m+[0m[0m content_base64sha256 = (known after apply)
+      [32m+[0m[0m content_base64sha512 = (known after apply)
+      [32m+[0m[0m content_md5          = (known after apply)
+      [32m+[0m[0m content_sha1         = (known after apply)
+      [32m+[0m[0m content_sha256       = (known after apply)
+      [32m+[0m[0m content_sha512       = (known after apply)
+      [32m+[0m[0m directory_permission = "0700"
+      [32m+[0m[0m file_permission      = "0600"
+      [32m+[0m[0m filename             = "./kubeconfig.yaml"
+      [32m+[0m[0m id                   = (known after apply)
+    }
+
+[1m  # stackit_ske_cluster.paas[0m will be created
+[0m  [32m+[0m[0m resource "stackit_ske_cluster" "paas" {
+      [32m+[0m[0m access                  = (known after apply)
+      [32m+[0m[0m egress_address_ranges   = (known after apply)
+      [32m+[0m[0m id                      = (known after apply)
+      [32m+[0m[0m kubernetes_version_used = (known after apply)
+      [32m+[0m[0m maintenance             = {
+          [32m+[0m[0m enable_kubernetes_version_updates    = true
+          [32m+[0m[0m enable_machine_image_version_updates = true
+          [32m+[0m[0m end                                  = "05:00:00Z"
+          [32m+[0m[0m start                                = "02:00:00Z"
+        }
+      [32m+[0m[0m name                    = "lvl3-paas"
+      [32m+[0m[0m network                 = {
+          [32m+[0m[0m control_plane = {
+              [32m+[0m[0m access_scope = "PUBLIC"
+            }
+          [32m+[0m[0m id            = (known after apply)
+        }
+      [32m+[0m[0m node_pools              = [
+          [32m+[0m[0m {
+              [32m+[0m[0m allow_system_components = true
+              [32m+[0m[0m availability_zones      = [
+                  [32m+[0m[0m "eu01-1",
+                ]
+              [32m+[0m[0m cri                     = "containerd"
+              [32m+[0m[0m labels                  = {
+                  [32m+[0m[0m "environment" = "learning"
+                  [32m+[0m[0m "managed-by"  = "terraform"
+                  [32m+[0m[0m "platform"    = "paas"
+                }
+              [32m+[0m[0m machine_type            = "g3i.2"
+              [32m+[0m[0m max_surge               = 1
+              [32m+[0m[0m max_unavailable         = 0
+              [32m+[0m[0m maximum                 = 2
+              [32m+[0m[0m minimum                 = 2
+              [32m+[0m[0m name                    = "paas-workers"
+              [32m+[0m[0m os_name                 = "flatcar"
+              [32m+[0m[0m os_version_used         = (known after apply)
+              [32m+[0m[0m volume_size             = 32
+              [32m+[0m[0m volume_type             = "storage_premium_perf6"
+            },
+        ]
+      [32m+[0m[0m pod_address_ranges      = (known after apply)
+      [32m+[0m[0m project_id              = "20a60c06-1e1a-406f-a840-37d1ff14f0e8"
+      [32m+[0m[0m region                  = "eu01"
+      [32m+[0m[0m service_account_issuer  = (known after apply)
+    }
+
+[1m  # stackit_ske_kubeconfig.admin[0m will be created
+[0m  [32m+[0m[0m resource "stackit_ske_kubeconfig" "admin" {
+      [32m+[0m[0m cluster_name   = "lvl3-paas"
+      [32m+[0m[0m creation_time  = (known after apply)
+      [32m+[0m[0m expiration     = 7200
+      [32m+[0m[0m expires_at     = (known after apply)
+      [32m+[0m[0m id             = (known after apply)
+      [32m+[0m[0m kube_config    = (sensitive value)
+      [32m+[0m[0m kube_config_id = (known after apply)
+      [32m+[0m[0m project_id     = "20a60c06-1e1a-406f-a840-37d1ff14f0e8"
+      [32m+[0m[0m refresh        = true
+      [32m+[0m[0m refresh_before = 3600
+      [32m+[0m[0m region         = "eu01"
+    }
+
+[1mPlan:[0m [0m3 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  [32m+[0m[0m cluster_name         = "lvl3-paas"
+  [32m+[0m[0m kubeconfig_file      = "./kubeconfig.yaml"
+  [32m+[0m[0m kubectl_test_command = "KUBECONFIG=./kubeconfig.yaml kubectl get nodes -o wide"
+  [32m+[0m[0m kubernetes_version   = (known after apply)
+[33m╷[0m[0m
+[33m│[0m [0m[1m[33mWarning: [0m[0m[1mPlanned to create kubeconfig[0m
+[33m│[0m [0m
+[33m│[0m [0m[0m  with stackit_ske_kubeconfig.admin,
+[33m│[0m [0m  on kubeconfig.tf line 1, in resource "stackit_ske_kubeconfig" "admin":
+[33m│[0m [0m   1: resource "stackit_ske_kubeconfig" "admin" [4m{[0m[0m
+[33m│[0m [0m
+[33m│[0m [0mOnce this resource is created, you will no longer be able to use the deprecated credentials endpoints and the kube_config field on the cluster resource will be empty for this
+[33m│[0m [0mcluster. For more info check How to Rotate SKE Credentials (https://docs.stackit.cloud/products/runtime/kubernetes-engine/how-tos/rotate-ske-credentials)
+[33m╵[0m[0m
+[90m
+─────────────────────────────────────────────────────────────────────────────[0m
+
+Saved the plan to: ske-enabled.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "ske-enabled.tfplan"

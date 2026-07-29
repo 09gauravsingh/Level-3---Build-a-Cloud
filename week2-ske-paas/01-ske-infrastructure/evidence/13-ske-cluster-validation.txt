@@ -1,0 +1,103 @@
+===== DATE =====
+Tue Jul 28 11:35:30 CEST 2026
+
+===== MACHINE =====
+Darwin
+/Users/Kumar	Gaurav/build-a-cloud/week2-ske-paas/01-ske-infrastructure
+
+===== TERRAFORM OUTPUT =====
+cluster_name = "lvl3-paas"
+kubeconfig_file = "./kubeconfig.yaml"
+kubectl_test_command = "KUBECONFIG=./kubeconfig.yaml kubectl get nodes -o wide"
+kubernetes_version = "1.35.6"
+worker_node_pool = "paas-workers"
+
+===== TERRAFORM STATE =====
+local_sensitive_file.kubeconfig
+stackit_ske_cluster.paas
+stackit_ske_kubeconfig.admin
+
+===== CLUSTER INFO =====
+Kubernetes control plane is running at https://api.lvl3-paas.598bce0d34.s.ske.eu01.onstackit.cloud
+CoreDNS is running at https://api.lvl3-paas.598bce0d34.s.ske.eu01.onstackit.cloud/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+===== API READINESS =====
+[+]ping ok
+[+]log ok
+[+]etcd ok
+[+]etcd-readiness ok
+[+]etcd-override-0 ok
+[+]etcd-override-readiness-0 ok
+[+]informer-sync ok
+[+]poststarthook/start-apiserver-admission-initializer ok
+[+]poststarthook/generic-apiserver-start-informers ok
+[+]poststarthook/priority-and-fairness-config-consumer ok
+[+]poststarthook/priority-and-fairness-filter ok
+[+]poststarthook/storage-object-count-tracker-hook ok
+[+]poststarthook/start-apiextensions-informers ok
+[+]poststarthook/start-apiextensions-controllers ok
+[+]poststarthook/crd-informer-synced ok
+[+]poststarthook/start-system-namespaces-controller ok
+[+]poststarthook/start-cluster-authentication-info-controller ok
+[+]poststarthook/start-kube-apiserver-identity-lease-controller ok
+[+]poststarthook/start-kube-apiserver-identity-lease-garbage-collector ok
+[+]poststarthook/start-legacy-token-tracking-controller ok
+[+]poststarthook/start-service-ip-repair-controllers ok
+[+]poststarthook/rbac/bootstrap-roles ok
+[+]poststarthook/scheduling/bootstrap-system-priority-classes ok
+[+]poststarthook/priority-and-fairness-config-producer ok
+[+]poststarthook/bootstrap-controller ok
+[+]poststarthook/start-kubernetes-service-cidr-controller ok
+[+]poststarthook/aggregator-reload-proxy-client-cert ok
+[+]poststarthook/start-kube-aggregator-informers ok
+[+]poststarthook/apiservice-status-local-available-controller ok
+[+]poststarthook/apiservice-status-remote-available-controller ok
+[+]poststarthook/apiservice-registration-controller ok
+[+]poststarthook/apiservice-discovery-controller ok
+[+]poststarthook/kube-apiserver-autoregistration ok
+[+]autoregister-completion ok
+[+]poststarthook/apiservice-openapi-controller ok
+[+]poststarthook/apiservice-openapiv3-controller ok
+[+]shutdown ok
+readyz check passed
+
+===== WORKER NODES =====
+NAME                                                       STATUS   ROLES    AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                                             KERNEL-VERSION    CONTAINER-RUNTIME
+shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   Ready    worker   17h   v1.35.6   10.250.2.104   <none>        Flatcar Container Linux by Kinvolk 4593.2.2 (Oklo)   6.12.91-flatcar   containerd://2.1.5
+shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   Ready    worker   17h   v1.35.6   10.250.1.215   <none>        Flatcar Container Linux by Kinvolk 4593.2.2 (Oklo)   6.12.91-flatcar   containerd://2.1.5
+
+===== NODE TOPOLOGY =====
+NAME                                                       STATUS   ROLES    AGE   VERSION   ZONE     INSTANCE-TYPE
+shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   Ready    worker   17h   v1.35.6   eu01-1   g3i.2
+shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   Ready    worker   17h   v1.35.6   eu01-1   g3i.2
+
+===== SYSTEM PODS =====
+NAMESPACE     NAME                                                  READY   STATUS    RESTARTS   AGE   IP             NODE                                                       NOMINATED NODE   READINESS GATES
+kube-system   apiserver-proxy-454bw                                 2/2     Running   0          17h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   apiserver-proxy-fgv78                                 2/2     Running   0          17h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-kube-controllers-6ff75d8c54-7rkfg              1/1     Running   0          17h   100.64.0.2     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-node-p5xvc                                     2/2     Running   0          17h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-node-sx8bp                                     2/2     Running   0          17h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   calico-node-vertical-autoscaler-78d97cd9c5-8bh64      1/1     Running   0          17h   100.64.0.11    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-typha-deploy-786bc49c8d-2vpsj                  1/1     Running   0          16h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-typha-deploy-786bc49c8d-rlxzb                  1/1     Running   0          16h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   calico-typha-horizontal-autoscaler-7794d69b45-qlm52   1/1     Running   0          17h   100.64.0.12    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   calico-typha-vertical-autoscaler-67f57b9cb7-8s92c     1/1     Running   0          17h   100.64.0.6     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   coredns-6b6b69db86-c96gk                              1/1     Running   0          17h   100.64.0.5     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   coredns-6b6b69db86-ld7dt                              1/1     Running   0          17h   100.64.0.8     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   csi-driver-node-g8jgk                                 3/3     Running   0          17h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   csi-driver-node-lt4k9                                 3/3     Running   0          17h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   kube-proxy-paas-workers-v1.35.6-k54lj                 2/2     Running   0          17h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   kube-proxy-paas-workers-v1.35.6-lcrwz                 2/2     Running   0          17h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   metrics-server-646d4b9df5-c5l7m                       1/1     Running   0          17h   100.64.0.9     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   metrics-server-646d4b9df5-sckr4                       1/1     Running   0          17h   100.64.0.7     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   node-exporter-d9srv                                   1/1     Running   0          17h   10.250.2.104   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   node-exporter-znngc                                   1/1     Running   0          17h   10.250.1.215   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   node-problem-detector-dzvql                           1/1     Running   0          17h   100.64.1.2     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+kube-system   node-problem-detector-zsszm                           1/1     Running   0          17h   100.64.0.3     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   vpn-shoot-0                                           3/3     Running   0          17h   100.64.0.4     shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+kube-system   vpn-shoot-1                                           3/3     Running   0          17h   100.64.0.10    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+
+===== POTENTIALLY UNHEALTHY PODS =====
