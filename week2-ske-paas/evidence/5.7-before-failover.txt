@@ -1,0 +1,19 @@
+=== BEFORE FAILOVER ===
+Wed Jul 29 14:48:26 CEST 2026
+
+NAME              AGE     INSTANCES   READY   STATUS                     PRIMARY
+level3-postgres   3h57m   2           2       Cluster in healthy state   level3-postgres-1
+
+NAME                 READY   STATUS    RESTARTS   AGE     IP            NODE                                                       NOMINATED NODE   READINESS GATES
+level3-postgres-1    1/1     Running   0          3h57m   100.64.1.7    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+level3-postgres-2    1/1     Running   0          3h55m   100.64.0.16   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+level3-psql-client   1/1     Running   0          46m     100.64.1.8    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+level3-postgres-r    ClusterIP   100.82.141.234   <none>        5432/TCP   3h57m
+level3-postgres-ro   ClusterIP   100.82.84.203    <none>        5432/TCP   3h57m
+level3-postgres-rw   ClusterIP   100.82.21.27     <none>        5432/TCP   3h57m
+
+NAME                STATUS   VOLUME                                                                 CAPACITY   ACCESS MODES   STORAGECLASS            VOLUMEATTRIBUTESCLASS   AGE
+level3-postgres-1   Bound    pv-shoot--598bce0d34--lvl3-paas-b5c56238-ee46-4dc0-9fc6-ff73d1c37386   5Gi        RWO            premium-perf1-stackit   <unset>                 3h57m
+level3-postgres-2   Bound    pv-shoot--598bce0d34--lvl3-paas-95dad3b5-c08c-4a0d-ac91-351c4a8e3434   5Gi        RWO            premium-perf1-stackit   <unset>                 3h56m

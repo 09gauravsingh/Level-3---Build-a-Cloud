@@ -1,0 +1,38 @@
+=== AFTER FAILOVER ===
+Wed Jul 29 15:03:33 CEST 2026
+
+Primary before: level3-postgres-1
+Primary after:  level3-postgres-2
+
+NAME              AGE     INSTANCES   READY   STATUS                     PRIMARY
+level3-postgres   4h13m   2           2       Cluster in healthy state   level3-postgres-2
+
+NAME                 READY   STATUS    RESTARTS   AGE     IP            NODE                                                       NOMINATED NODE   READINESS GATES
+level3-postgres-1    1/1     Running   0          9m20s   100.64.1.9    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+level3-postgres-2    1/1     Running   0          4h10m   100.64.0.16   shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-pkk87   <none>           <none>
+level3-psql-client   1/1     Running   0          62m     100.64.1.8    shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx   <none>           <none>
+
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+level3-postgres-r    ClusterIP   100.82.141.234   <none>        5432/TCP   4h13m
+level3-postgres-ro   ClusterIP   100.82.84.203    <none>        5432/TCP   4h13m
+level3-postgres-rw   ClusterIP   100.82.21.27     <none>        5432/TCP   4h13m
+
+NAME                STATUS   VOLUME                                                                 CAPACITY   ACCESS MODES   STORAGECLASS            VOLUMEATTRIBUTESCLASS   AGE
+level3-postgres-1   Bound    pv-shoot--598bce0d34--lvl3-paas-b5c56238-ee46-4dc0-9fc6-ff73d1c37386   5Gi        RWO            premium-perf1-stackit   <unset>                 4h13m
+level3-postgres-2   Bound    pv-shoot--598bce0d34--lvl3-paas-95dad3b5-c08c-4a0d-ac91-351c4a8e3434   5Gi        RWO            premium-perf1-stackit   <unset>                 4h11m
+
+LAST SEEN   TYPE     REASON           OBJECT                    MESSAGE
+9m20s       Normal   Scheduled        pod/level3-postgres-1     Successfully assigned database-services/level3-postgres-1 to shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx
+62m         Normal   Scheduled        pod/level3-psql-client    Successfully assigned database-services/level3-psql-client to shoot--598bce0d34--lvl3-paas-paas-workers-z1-77485-8ltfx
+62m         Normal   Started          pod/level3-psql-client    Container started
+62m         Normal   Created          pod/level3-psql-client    Container created
+62m         Normal   Pulled           pod/level3-psql-client    Container image "ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie" already present on machine and can be accessed by the pod
+9m22s       Normal   FailingOver      cluster/level3-postgres   Current primary isn't healthy, initiating a failover from level3-postgres-1
+9m22s       Normal   Killing          pod/level3-postgres-1     Stopping container postgres
+9m21s       Normal   FailoverTarget   cluster/level3-postgres   Failing over from level3-postgres-1 to level3-postgres-2
+9m11s       Normal   Created          pod/level3-postgres-1     Container created
+9m11s       Normal   Started          pod/level3-postgres-1     Container started
+9m11s       Normal   Pulled           pod/level3-postgres-1     Container image "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.0" already present on machine and can be accessed by the pod
+9m10s       Normal   Started          pod/level3-postgres-1     Container started
+9m10s       Normal   Created          pod/level3-postgres-1     Container created
+9m10s       Normal   Pulled           pod/level3-postgres-1     Container image "ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie" already present on machine and can be accessed by the pod
