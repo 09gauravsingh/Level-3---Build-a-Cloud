@@ -23,3 +23,39 @@ credentials/
 # Variable files that may carry private values
 terraform.tfvars
 *.auto.tfvars
+
+# BEGIN CLOUD AUTOMATION SAFETY
+
+# Terraform working directories
+**/.terraform/*
+
+# Terraform state files
+**/*.tfstate
+**/*.tfstate.*
+
+# Saved Terraform plans
+**/*.tfplan
+
+# Local Terraform variable files
+**/*.tfvars
+**/*.tfvars.json
+**/*.auto.tfvars
+**/*.auto.tfvars.json
+
+# Kubernetes credentials
+**/kubeconfig.yaml
+**/kubeconfig-expired-*
+**/*.kubeconfig
+
+# STACKIT service-account credentials
+**/*sa-key*.json
+**/service-account-key.json
+
+# Private keys
+**/*.pem
+**/*.key
+
+# macOS metadata
+**/.DS_Store
+
+# END CLOUD AUTOMATION SAFETY

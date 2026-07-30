@@ -1,0 +1,84 @@
+name: Week 2 Pipeline Smoke Test
+
+on:
+  push:
+    branches:
+      - gitops-cicd
+
+  workflow_dispatch:
+
+jobs:
+  verify-runner:
+    name: Verify STACKIT runner and repository
+    runs-on: stackit-ubuntu-22
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Show runner information
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Operating system:"
+          uname -a
+
+          echo
+          echo "Repository directory:"
+          pwd
+
+          echo
+          echo "Current commit:"
+          git rev-parse --short HEAD
+
+          echo
+          echo "Current branch or reference:"
+          git rev-parse --abbrev-ref HEAD
+
+      - name: Verify Week 2 project structure
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TERRAFORM_DIR="week2-ske-paas/01-ske-infrastructure"
+          OPERATOR_DIR="week2-ske-paas/02-operator"
+          PRODUCT_DIR="week2-ske-paas/03-product"
+
+          test -d "$TERRAFORM_DIR"
+          test -f "$TERRAFORM_DIR/cluster.tf"
+          test -f "$TERRAFORM_DIR/provider.tf"
+          test -f "$TERRAFORM_DIR/variables.tf"
+
+          test -d "$OPERATOR_DIR"
+          test -d "$PRODUCT_DIR"
+          test -f "$PRODUCT_DIR/level3-postgres.yaml"
+
+          echo "Week 2 Terraform, Operator and PaaS files were found."
+
+      - name: Confirm sensitive runtime files are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SENSITIVE_FILES="$(
+            find . \
+              -type f \
+              \( \
+                -name "terraform.tfstate" \
+                -o -name "terraform.tfstate.*" \
+                -o -name "kubeconfig.yaml" \
+                -o -name "kubeconfig-expired-*" \
+                -o -name "sa-key-*.json" \
+                -o -name "service-account-key.json" \
+              \) \
+              -print
+          )"
+
+          if [ -n "$SENSITIVE_FILES" ]; then
+            echo "Sensitive files were found:"
+            echo "$SENSITIVE_FILES"
+            exit 1
+          fi
+
+          echo "No sensitive runtime files were found."
