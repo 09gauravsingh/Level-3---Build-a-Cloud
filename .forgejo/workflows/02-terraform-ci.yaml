@@ -15,6 +15,7 @@ jobs:
   terraform-validation:
     name: Format and validate Terraform
     runs-on: stackit-ubuntu-22
+    timeout-minutes: 10
 
     defaults:
       run:
@@ -27,11 +28,25 @@ jobs:
 
       - name: Read required Terraform version
         id: terraform-version
-        working-directory: .
         run: |
           set -euo pipefail
 
-          TERRAFORM_VERSION="$(cat ../../../.terraform-version)"
+          VERSION_FILE="${GITHUB_WORKSPACE}/.terraform-version"
+
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Terraform version file was not found:"
+            echo "$VERSION_FILE"
+            exit 1
+          fi
+
+          TERRAFORM_VERSION="$(
+            tr -d '[:space:]' < "$VERSION_FILE"
+          )"
+
+          if [ -z "$TERRAFORM_VERSION" ]; then
+            echo ".terraform-version is empty."
+            exit 1
+          fi
 
           echo "Required Terraform version: $TERRAFORM_VERSION"
           echo "version=$TERRAFORM_VERSION" >> "$GITHUB_OUTPUT"
