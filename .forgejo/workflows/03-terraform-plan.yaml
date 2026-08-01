@@ -1,0 +1,142 @@
+name: Week 2 Terraform Plan
+
+on:
+  push:
+    branches:
+      - gitops-cicd
+
+  workflow_dispatch:
+
+jobs:
+  terraform-plan:
+    name: Plan SKE infrastructure
+    runs-on: stackit-ubuntu-22
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: week2-ske-paas/01-ske-infrastructure
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read required Terraform version
+        id: terraform-version
+        run: |
+          set -euo pipefail
+
+          VERSION_FILE="${GITHUB_WORKSPACE}/.terraform-version"
+
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Terraform version file is missing."
+            exit 1
+          fi
+
+          TERRAFORM_VERSION="$(
+            tr -d '[:space:]' < "$VERSION_FILE"
+          )"
+
+          echo "Terraform version: $TERRAFORM_VERSION"
+          echo "version=$TERRAFORM_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive -diff
+
+      - name: Initialise remote state and create plan
+        env:
+          TF_IN_AUTOMATION: "true"
+          TF_INPUT: "false"
+
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+          AWS_REGION: "eu01"
+          AWS_DEFAULT_REGION: "eu01"
+
+          STACKIT_SERVICE_ACCOUNT_KEY_B64: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY_B64 }}
+
+        run: |
+          set -euo pipefail
+
+          echo "Checking required pipeline secrets."
+
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "TF_STATE_ACCESS_KEY_ID is missing."
+            exit 1
+          fi
+
+          if [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "TF_STATE_SECRET_ACCESS_KEY is missing."
+            exit 1
+          fi
+
+          if [ -z "${STACKIT_SERVICE_ACCOUNT_KEY_B64:-}" ]; then
+            echo "STACKIT_SERVICE_ACCOUNT_KEY_B64 is missing."
+            exit 1
+          fi
+
+          SERVICE_ACCOUNT_KEY_FILE="$(mktemp)"
+
+          cleanup() {
+            rm -f "$SERVICE_ACCOUNT_KEY_FILE"
+          }
+
+          trap cleanup EXIT
+
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY_B64" \
+            | base64 --decode \
+            > "$SERVICE_ACCOUNT_KEY_FILE"
+
+          chmod 600 "$SERVICE_ACCOUNT_KEY_FILE"
+
+          python3 -m json.tool \
+            "$SERVICE_ACCOUNT_KEY_FILE" \
+            >/dev/null
+
+          export STACKIT_SERVICE_ACCOUNT_KEY_PATH="$SERVICE_ACCOUNT_KEY_FILE"
+
+          echo "Initialising Terraform with the remote S3 backend."
+
+          terraform init \
+            -input=false
+
+          echo "Validating the Terraform configuration."
+
+          terraform validate \
+            -no-color
+
+          echo "Comparing configuration, remote state and real infrastructure."
+
+          set +e
+
+          terraform plan \
+            -no-color \
+            -detailed-exitcode \
+            -lock-timeout=60s
+
+          PLAN_EXIT_CODE=$?
+
+          set -e
+
+          case "$PLAN_EXIT_CODE" in
+            0)
+              echo "Terraform plan completed: no infrastructure changes."
+              ;;
+
+            2)
+              echo "Terraform plan completed: proposed changes were detected."
+              echo "Review the plan above. Nothing was applied."
+              ;;
+
+            *)
+              echo "Terraform plan failed."
+              exit "$PLAN_EXIT_CODE"
+              ;;
+          esac
