@@ -1,0 +1,87 @@
+name: Week 2 Terraform CI
+
+on:
+  push:
+    branches:
+      - gitops-cicd
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  terraform-validation:
+    name: Format and validate Terraform
+    runs-on: stackit-ubuntu-22
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: week2-ske-paas/01-ske-infrastructure
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read required Terraform version
+        id: terraform-version
+        run: |
+          set -euo pipefail
+
+          VERSION_FILE="${GITHUB_WORKSPACE}/.terraform-version"
+
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Terraform version file was not found:"
+            echo "$VERSION_FILE"
+            exit 1
+          fi
+
+          TERRAFORM_VERSION="$(
+            tr -d '[:space:]' < "$VERSION_FILE"
+          )"
+
+          if [ -z "$TERRAFORM_VERSION" ]; then
+            echo ".terraform-version is empty."
+            exit 1
+          fi
+
+          echo "Required Terraform version: $TERRAFORM_VERSION"
+          echo "version=$TERRAFORM_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+          terraform_wrapper: false
+
+      - name: Display Terraform version
+        run: terraform version
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive -diff
+
+      - name: Initialise providers without state backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validate Terraform configuration
+        run: terraform validate -no-color
+
+      - name: Confirm no local runtime files exist
+        run: |
+          set -euo pipefail
+
+          for file in \
+            terraform.tfstate \
+            terraform.tfstate.backup \
+            kubeconfig.yaml
+          do
+            if [ -e "$file" ]; then
+              echo "Unexpected runtime file found: $file"
+              exit 1
+            fi
+          done
+
+          echo "No local state or kubeconfig was used by Terraform CI."

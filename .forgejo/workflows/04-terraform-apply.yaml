@@ -1,0 +1,276 @@
+name: Week 2 Terraform Apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type APPLY to confirm the SKE deployment"
+        required: true
+        type: string
+
+      allow_destructive:
+        description: "Allow delete or replacement operations"
+        required: true
+        default: false
+        type: boolean
+
+# Only one SKE deployment may run at a time.
+# Never cancel an apply that is already running.
+concurrency:
+  group: week2-ske-terraform-apply
+  cancel-in-progress: false
+
+jobs:
+  terraform-apply:
+    name: Apply SKE infrastructure
+    runs-on: stackit-ubuntu-22
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: week2-ske-paas/01-ske-infrastructure
+
+    steps:
+      - name: Confirm manual deployment
+        env:
+          APPLY_CONFIRMATION: ${{ inputs.confirmation }}
+          CURRENT_BRANCH: ${{ forgejo.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ "$APPLY_CONFIRMATION" != "APPLY" ]; then
+            echo "Deployment confirmation was incorrect."
+            echo 'Start the workflow again and type exactly: APPLY'
+            exit 1
+          fi
+
+          if [ "$CURRENT_BRANCH" != "main" ]; then
+            echo "Terraform apply is permitted only from main."
+            echo "Current branch: $CURRENT_BRANCH"
+            exit 1
+          fi
+
+          echo "Manual confirmation accepted."
+          echo "Deployment source branch: $CURRENT_BRANCH"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read required Terraform version
+        id: terraform-version
+        run: |
+          set -euo pipefail
+
+          VERSION_FILE="${GITHUB_WORKSPACE}/.terraform-version"
+
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Terraform version file is missing."
+            exit 1
+          fi
+
+          TERRAFORM_VERSION="$(
+            tr -d '[:space:]' < "$VERSION_FILE"
+          )"
+
+          if [ -z "$TERRAFORM_VERSION" ]; then
+            echo "Terraform version is empty."
+            exit 1
+          fi
+
+          echo "Terraform version: $TERRAFORM_VERSION"
+          echo "version=$TERRAFORM_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive -diff
+
+      - name: Plan and apply infrastructure
+        env:
+          TF_IN_AUTOMATION: "true"
+          TF_INPUT: "false"
+
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+          AWS_REGION: "eu01"
+          AWS_DEFAULT_REGION: "eu01"
+
+          STACKIT_SERVICE_ACCOUNT_KEY_B64: ${{ secrets.STACKIT_SERVICE_ACCOUNT_KEY_B64 }}
+
+          ALLOW_DESTRUCTIVE: ${{ inputs.allow_destructive }}
+
+        run: |
+          set -euo pipefail
+
+          echo "Checking required pipeline secrets."
+
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "TF_STATE_ACCESS_KEY_ID is missing."
+            exit 1
+          fi
+
+          if [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            echo "TF_STATE_SECRET_ACCESS_KEY is missing."
+            exit 1
+          fi
+
+          if [ -z "${STACKIT_SERVICE_ACCOUNT_KEY_B64:-}" ]; then
+            echo "STACKIT_SERVICE_ACCOUNT_KEY_B64 is missing."
+            exit 1
+          fi
+
+          SERVICE_ACCOUNT_KEY_FILE="$(mktemp)"
+          PLAN_FILE="$(mktemp)"
+          PLAN_JSON="$(mktemp)"
+
+          cleanup() {
+            rm -f \
+              "$SERVICE_ACCOUNT_KEY_FILE" \
+              "$PLAN_FILE" \
+              "$PLAN_JSON"
+          }
+
+          trap cleanup EXIT
+
+          echo "Creating the temporary STACKIT service-account file."
+
+          printf '%s' "$STACKIT_SERVICE_ACCOUNT_KEY_B64" \
+            | base64 --decode \
+            > "$SERVICE_ACCOUNT_KEY_FILE"
+
+          chmod 600 "$SERVICE_ACCOUNT_KEY_FILE"
+
+          python3 -m json.tool \
+            "$SERVICE_ACCOUNT_KEY_FILE" \
+            >/dev/null
+
+          export STACKIT_SERVICE_ACCOUNT_KEY_PATH="$SERVICE_ACCOUNT_KEY_FILE"
+
+          echo "Initialising the remote Terraform backend."
+
+          terraform init \
+            -input=false
+
+          echo "Validating the Terraform configuration."
+
+          terraform validate \
+            -no-color
+
+          echo "Creating a saved Terraform execution plan."
+
+          terraform plan \
+            -input=false \
+            -lock-timeout=60s \
+            -no-color \
+            -out="$PLAN_FILE"
+
+          echo "Inspecting the plan for destructive operations."
+
+          terraform show \
+            -json \
+            "$PLAN_FILE" \
+            > "$PLAN_JSON"
+
+          python3 - "$PLAN_JSON" "$ALLOW_DESTRUCTIVE" <<'PY'
+          import json
+          import sys
+
+          plan_path = sys.argv[1]
+          allow_destructive = sys.argv[2].lower() == "true"
+
+          with open(plan_path, encoding="utf-8") as plan_file:
+              plan = json.load(plan_file)
+
+          destructive = []
+
+          for change in plan.get("resource_changes", []):
+              actions = change.get("change", {}).get("actions", [])
+
+              if "delete" in actions:
+                  destructive.append(
+                      {
+                          "address": change.get("address", "unknown"),
+                          "actions": actions,
+                      }
+                  )
+
+          if destructive:
+              print("Destructive operations detected:")
+
+              for item in destructive:
+                  print(
+                      f"  {item['address']}: "
+                      f"{','.join(item['actions'])}"
+                  )
+
+              if not allow_destructive:
+                  print()
+                  print(
+                      "Deployment stopped because "
+                      "allow_destructive is false."
+                  )
+                  sys.exit(1)
+
+              print()
+              print(
+                  "Destructive changes were explicitly allowed "
+                  "when the workflow was started."
+              )
+          else:
+              print("No delete or replacement operations detected.")
+          PY
+
+          echo "Displaying the approved execution plan."
+
+          terraform show \
+            -no-color \
+            "$PLAN_FILE"
+
+          echo "Applying exactly the saved Terraform plan."
+
+          terraform apply \
+            -input=false \
+            "$PLAN_FILE"
+
+          echo "Checking convergence after apply."
+
+          set +e
+
+          terraform plan \
+            -input=false \
+            -lock-timeout=60s \
+            -no-color \
+            -detailed-exitcode
+
+          POST_APPLY_EXIT_CODE=$?
+
+          set -e
+
+          case "$POST_APPLY_EXIT_CODE" in
+            0)
+              echo "Post-apply verification succeeded: no changes remain."
+              ;;
+
+            2)
+              echo "ERROR: Terraform still detects changes after apply."
+              exit 1
+              ;;
+
+            *)
+              echo "ERROR: Post-apply verification failed."
+              exit "$POST_APPLY_EXIT_CODE"
+              ;;
+          esac
+
+      - name: Show managed resource addresses
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_ACCESS_KEY }}
+          AWS_REGION: "eu01"
+          AWS_DEFAULT_REGION: "eu01"
+        run: terraform state list
