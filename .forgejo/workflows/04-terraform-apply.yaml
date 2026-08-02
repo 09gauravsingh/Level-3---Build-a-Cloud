@@ -32,6 +32,10 @@ jobs:
         working-directory: week2-ske-paas/01-ske-infrastructure
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+
       - name: Confirm manual deployment
         env:
           APPLY_CONFIRMATION: ${{ inputs.confirmation }}
@@ -53,9 +57,6 @@ jobs:
 
           echo "Manual confirmation accepted."
           echo "Deployment source branch: $CURRENT_BRANCH"
-
-      - name: Check out repository
-        uses: actions/checkout@v4
 
       - name: Read required Terraform version
         id: terraform-version
