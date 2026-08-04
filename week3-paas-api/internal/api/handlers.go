@@ -1,10 +1,12 @@
-package main
+package api
 
 import (
 	"net/http"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+
+	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
 )
 
 // Health confirms that the API process is running.
@@ -17,11 +19,11 @@ func (api *API) Health(c *gin.Context) {
 
 // CreateInstance creates a CloudNativePG Cluster resource.
 func (api *API) CreateInstance(c *gin.Context) {
-	var request CreateInstanceRequest
+	var request models.CreateInstanceRequest
 
-	// Convert the incoming JSON body into a Go struct.
+	// Convert the incoming JSON into a Go struct.
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "Bad Request",
 			Message: "invalid JSON request",
 		})
@@ -31,14 +33,14 @@ func (api *API) CreateInstance(c *gin.Context) {
 	setDefaults(&request)
 
 	if message := validateCreateRequest(request); message != "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "Bad Request",
 			Message: message,
 		})
 		return
 	}
 
-	// Ask Kubernetes to create the PostgreSQL product instance.
+	// Ask Kubernetes to create the PostgreSQL instance.
 	instance, err := api.service.Create(
 		c.Request.Context(),
 		request,
@@ -48,7 +50,7 @@ func (api *API) CreateInstance(c *gin.Context) {
 		return
 	}
 
-	// The Operator continues provisioning asynchronously.
+	// CloudNativePG continues provisioning asynchronously.
 	c.Header(
 		"Location",
 		"/api/v1/instances/"+instance.Name,
@@ -67,7 +69,7 @@ func (api *API) ListInstances(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, InstanceList{
+	c.JSON(http.StatusOK, models.InstanceList{
 		Items: instances,
 		Count: len(instances),
 	})
@@ -85,14 +87,14 @@ func (api *API) DeleteInstance(c *gin.Context) {
 		return
 	}
 
-	// Kubernetes and CloudNativePG perform the actual cleanup.
-	c.JSON(http.StatusAccepted, OperationResponse{
+	// Kubernetes performs the actual cleanup asynchronously.
+	c.JSON(http.StatusAccepted, models.OperationResponse{
 		Name:   name,
 		Status: "Deleting",
 	})
 }
 
-// GetConnection returns database connection data from a Kubernetes Secret.
+// GetConnection returns data from the CloudNativePG Secret.
 func (api *API) GetConnection(c *gin.Context) {
 	connection, err := api.service.Connection(
 		c.Request.Context(),
@@ -108,8 +110,8 @@ func (api *API) GetConnection(c *gin.Context) {
 	c.JSON(http.StatusOK, connection)
 }
 
-// setDefaults supplies simple values for optional fields.
-func setDefaults(request *CreateInstanceRequest) {
+// setDefaults supplies values for optional request fields.
+func setDefaults(request *models.CreateInstanceRequest) {
 	if request.Instances == 0 {
 		request.Instances = 1
 	}
@@ -127,10 +129,14 @@ func setDefaults(request *CreateInstanceRequest) {
 	}
 }
 
-var validInstanceName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+var validInstanceName = regexp.MustCompile(
+	`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`,
+)
 
 // validateCreateRequest checks basic product limits.
-func validateCreateRequest(request CreateInstanceRequest) string {
+func validateCreateRequest(
+	request models.CreateInstanceRequest,
+) string {
 	if request.Name == "" ||
 		!validInstanceName.MatchString(request.Name) {
 		return "name must use lowercase letters, numbers or hyphens"

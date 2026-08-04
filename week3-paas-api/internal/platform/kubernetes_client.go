@@ -1,4 +1,6 @@
-package main
+//This file has only one responsibility: Connect the Go application to Kubernetes.
+
+package platform
 
 import (
 	"os"
@@ -10,7 +12,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const managedByLabel = "platform.level3.io/managed-by"
+const (
+	// This label identifies PostgreSQL clusters created by our API.
+	managedByLabel = "platform.level3.io/managed-by"
+	managedByValue = "week3-paas-api"
+)
 
 // clusterGVR identifies the CloudNativePG Cluster resource.
 var clusterGVR = schema.GroupVersionResource{
@@ -19,25 +25,27 @@ var clusterGVR = schema.GroupVersionResource{
 	Resource: "clusters",
 }
 
-// KubeService contains the Kubernetes clients used by our API.
+// KubeService contains the Kubernetes clients used by the API.
 type KubeService struct {
 	clusters  dynamic.ResourceInterface
 	core      kubernetes.Interface
 	namespace string
 }
 
-// NewKubeService creates clients for CloudNativePG resources and Secrets.
+// NewKubeService connects the application to Kubernetes.
 func NewKubeService(namespace string) (*KubeService, error) {
 	config, err := kubeConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	// Dynamic client manages CloudNativePG custom resources.
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
+	// Core client reads Kubernetes Secrets.
 	coreClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -52,8 +60,8 @@ func NewKubeService(namespace string) (*KubeService, error) {
 	}, nil
 }
 
-// kubeConfig uses the Pod ServiceAccount in SKE.
-// On the Mac, it uses KUBECONFIG or the default kubeconfig.
+// kubeConfig uses the Pod ServiceAccount inside SKE.
+// During local development, it uses the Mac kubeconfig.
 func kubeConfig() (*rest.Config, error) {
 	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 		return rest.InClusterConfig()

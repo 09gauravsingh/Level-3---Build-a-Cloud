@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"crypto/subtle"
@@ -6,21 +6,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
 )
 
-// Authenticate checks the bearer token before protected handlers run.
+// Authenticate protects product endpoints with a bearer token.
 func (api *API) Authenticate(c *gin.Context) {
 	expected := "Bearer " + api.token
 	provided := c.GetHeader("Authorization")
 
-	// Constant-time comparison reduces timing-based token attacks.
 	if subtle.ConstantTimeCompare(
 		[]byte(provided),
 		[]byte(expected),
 	) != 1 {
 		c.AbortWithStatusJSON(
 			http.StatusUnauthorized,
-			ErrorResponse{
+			models.ErrorResponse{
 				Error:   "Unauthorized",
 				Message: "invalid bearer token",
 			},
@@ -28,7 +29,6 @@ func (api *API) Authenticate(c *gin.Context) {
 		return
 	}
 
-	// Continue to the requested endpoint.
 	c.Next()
 }
 
@@ -39,19 +39,24 @@ func (api *API) ServiceError(
 ) {
 	switch {
 	case apierrors.IsNotFound(err):
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error:   "Not Found",
-			Message: "instance not found",
-		})
+		c.JSON(
+			http.StatusNotFound,
+			models.ErrorResponse{
+				Error:   "Not Found",
+				Message: "instance not found",
+			},
+		)
 
 	case apierrors.IsAlreadyExists(err):
-		c.JSON(http.StatusConflict, ErrorResponse{
-			Error:   "Conflict",
-			Message: "instance already exists",
-		})
+		c.JSON(
+			http.StatusConflict,
+			models.ErrorResponse{
+				Error:   "Conflict",
+				Message: "instance already exists",
+			},
+		)
 
 	default:
-		// Log internal details but return a safe message to the client.
 		api.logger.Error(
 			"Kubernetes operation failed",
 			"error",
@@ -60,7 +65,7 @@ func (api *API) ServiceError(
 
 		c.JSON(
 			http.StatusInternalServerError,
-			ErrorResponse{
+			models.ErrorResponse{
 				Error:   "Internal Server Error",
 				Message: "operation failed",
 			},

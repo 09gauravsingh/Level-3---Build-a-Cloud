@@ -1,22 +1,11 @@
-// Previous client.go file created to coonect to the kubernetes and prepare clients. This new file uses those clients to perform real operations.
-
-// Previous code
-// → Connect to Kubernetes
-// → Prepare clients
-
-// This code
-// → Create PostgreSQL
-// → List PostgreSQL instances
-// → Delete PostgreSQL
-// → Read connection credentials
-// → Convert Kubernetes data into clean API responses
-
-package main
+package platform
 
 import (
 	"context"
 	"strconv"
 	"time"
+
+	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,8 +15,8 @@ import (
 // Create creates one CloudNativePG Cluster resource.
 func (s *KubeService) Create(
 	ctx context.Context,
-	request CreateInstanceRequest,
-) (Instance, error) {
+	request models.CreateInstanceRequest,
+) (models.Instance, error) {
 	cluster := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "postgresql.cnpg.io/v1",
@@ -36,9 +25,8 @@ func (s *KubeService) Create(
 			"metadata": map[string]any{
 				"name":      request.Name,
 				"namespace": s.namespace,
-
 				"labels": map[string]any{
-					managedByLabel: "week3-paas-api",
+					managedByLabel: managedByValue,
 				},
 			},
 
@@ -58,41 +46,34 @@ func (s *KubeService) Create(
 			},
 		},
 	}
-	//Send create request to Kubernetes
+
 	created, err := s.clusters.Create(
 		ctx,
 		cluster,
 		metav1.CreateOptions{},
 	)
-
 	if err != nil {
-		return Instance{}, err
+		return models.Instance{}, err
 	}
 
 	return toInstance(created), nil
 }
 
-// List returns only instances created through this API.
+// List returns only PostgreSQL instances created by this API.
 func (s *KubeService) List(
 	ctx context.Context,
-) ([]Instance, error) {
+) ([]models.Instance, error) {
 	list, err := s.clusters.List(
 		ctx,
 		metav1.ListOptions{
-			LabelSelector: managedByLabel +
-				"=week3-paas-api",
+			LabelSelector: managedByLabel + "=" + managedByValue,
 		},
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
-	instances := make(
-		[]Instance,
-		0,
-		len(list.Items),
-	)
+	instances := make([]models.Instance, 0, len(list.Items))
 
 	for index := range list.Items {
 		instances = append(
@@ -109,6 +90,7 @@ func (s *KubeService) Delete(
 	ctx context.Context,
 	name string,
 ) error {
+	// First verify that this instance belongs to our API.
 	if _, err := s.getManagedCluster(ctx, name); err != nil {
 		return err
 	}
@@ -124,9 +106,10 @@ func (s *KubeService) Delete(
 func (s *KubeService) Connection(
 	ctx context.Context,
 	name string,
-) (ConnectionData, error) {
+) (models.ConnectionData, error) {
+	// Prevent access to manually created PostgreSQL clusters.
 	if _, err := s.getManagedCluster(ctx, name); err != nil {
-		return ConnectionData{}, err
+		return models.ConnectionData{}, err
 	}
 
 	secret, err := s.core.
@@ -137,20 +120,16 @@ func (s *KubeService) Connection(
 			name+"-app",
 			metav1.GetOptions{},
 		)
-
 	if err != nil {
-		return ConnectionData{}, err
+		return models.ConnectionData{}, err
 	}
 
-	port, _ := strconv.Atoi(
-		string(secret.Data["port"]),
-	)
-
+	port, _ := strconv.Atoi(string(secret.Data["port"]))
 	if port == 0 {
 		port = 5432
 	}
 
-	return ConnectionData{
+	return models.ConnectionData{
 		Host:     string(secret.Data["host"]),
 		Port:     port,
 		Database: string(secret.Data["dbname"]),
@@ -160,7 +139,7 @@ func (s *KubeService) Connection(
 	}, nil
 }
 
-// getManagedCluster prevents the API from changing manually created clusters.
+// getManagedCluster verifies that a cluster was created by our API.
 func (s *KubeService) getManagedCluster(
 	ctx context.Context,
 	name string,
@@ -170,12 +149,11 @@ func (s *KubeService) getManagedCluster(
 		name,
 		metav1.GetOptions{},
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
-	if cluster.GetLabels()[managedByLabel] != "week3-paas-api" {
+	if cluster.GetLabels()[managedByLabel] != managedByValue {
 		return nil, apierrors.NewNotFound(
 			clusterGVR.GroupResource(),
 			name,
@@ -185,10 +163,10 @@ func (s *KubeService) getManagedCluster(
 	return cluster, nil
 }
 
-// toInstance converts a Kubernetes resource into simple API JSON.
+// toInstance converts a Kubernetes Cluster into simple REST API data.
 func toInstance(
 	cluster *unstructured.Unstructured,
-) Instance {
+) models.Instance {
 	desired, _, _ := unstructured.NestedInt64(
 		cluster.Object,
 		"spec",
@@ -241,15 +219,13 @@ func toInstance(
 	}
 
 	createdAt := ""
-
-	// Store the Kubernetes creation timestamp in a variable first.
 	created := cluster.GetCreationTimestamp()
 
 	if !created.Time.IsZero() {
 		createdAt = created.Time.UTC().Format(time.RFC3339)
 	}
 
-	return Instance{
+	return models.Instance{
 		Name:             cluster.GetName(),
 		Namespace:        cluster.GetNamespace(),
 		Status:           status,
