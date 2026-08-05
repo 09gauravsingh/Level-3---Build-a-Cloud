@@ -1,11 +1,13 @@
-//This file only defines which routes exist and which handler runs.
-
+// This file defines which routes exist and which handler runs.
 package api
 
 import (
 	"context"
 	"log/slog"
+	"net/http"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
@@ -35,7 +37,7 @@ type API struct {
 	token   string
 }
 
-// NewRouter registers all REST API routes.
+// NewRouter creates the Gin router and registers all REST API routes.
 func NewRouter(
 	service PlatformService,
 	logger *slog.Logger,
@@ -47,13 +49,40 @@ func NewRouter(
 		token:   token,
 	}
 
+	// Create a new Gin router.
 	router := gin.New()
+
+	// Log requests and prevent panics from crashing the API.
 	router.Use(gin.Logger(), gin.Recovery())
+
+	// Allow Swagger Editor to call the local API from the browser.
+	// This middleware must run before authentication and route handlers.
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"https://editor.swagger.io",
+		},
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Authorization",
+		},
+		ExposeHeaders: []string{
+			"Location",
+		},
+		AllowPrivateNetwork: true,
+		MaxAge:              12 * time.Hour,
+	}))
 
 	// Public health endpoint.
 	router.GET("/healthz", api.Health)
 
-	// All product endpoints require authentication.
+	// All product endpoints require bearer-token authentication.
 	v1 := router.Group("/api/v1")
 	v1.Use(api.Authenticate)
 
