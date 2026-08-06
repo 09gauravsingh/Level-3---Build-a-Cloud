@@ -1,3 +1,6 @@
+//Bearer-token authentication and shared error
+//translation. This file handles authentication and error handling.
+
 package api
 
 import (
