@@ -41,4 +41,16 @@ jobs:
           context: ./week3-paas-api
           file: ./week3-paas-api/Dockerfile
           push: true
-          tags: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.0.0
+          tags: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v2.0.0
+
+
+
+
+# what the workflow does:
+# 1. STACKIT runner starts
+# 2. Repository is downloaded
+# 3. Runner logs in to Container Registry
+# 4. Docker reads the Dockerfile
+# 5. Go API is compiled inside the builder stage
+# 6. Runtime image is created
+# 7. Image is pushed as v1.0.0
