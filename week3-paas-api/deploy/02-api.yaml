@@ -1,3 +1,16 @@
+# This YAML file creates two Kubernetes objects:
+# Why are we creating two objects?
+# Deployment
+# → creates and maintains the API Pod(it runs the GO API server)
+
+# Service
+# → provides a stable network address for the Pod
+
+# Pods can be replaced and receive new IP addresses. The Service remains stable.
+
+
+
+
 # Runs the Go API as a Kubernetes workload.
 apiVersion: apps/v1
 kind: Deployment
@@ -75,11 +88,8 @@ spec:
               cpu: 500m
               memory: 256Mi
 
-          # Run the API with an explicit non-root Linux UID.
           securityContext:
             runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:

@@ -1,3 +1,11 @@
+// This file now contains only the required product operations:
+// Create
+// List
+// Delete
+// Connection data and read secrets from the Kubernetes cluster.
+
+
+
 package platform
 
 import (

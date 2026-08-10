@@ -1,3 +1,5 @@
+//this file contains json request and response models for the API.
+
 package models
 
 // CreateInstanceRequest is the JSON body used to create PostgreSQL.

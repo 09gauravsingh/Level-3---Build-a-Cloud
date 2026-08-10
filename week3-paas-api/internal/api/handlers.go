@@ -1,13 +1,55 @@
+// HTTP request logic: bind JSON, defaults, validation,
+// call service, return JSON.
+
 package api
 
 import (
 	"net/http"
+	"os"
 	"regexp"
-
-	"github.com/gin-gonic/gin"
+	"time"
 
 	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
+
+// JWT Authentication Code:
+func (api *API) login(c *gin.Context) {
+	var request struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	//Read login JSON.
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	//Check Credentials:
+	if request.Username != os.Getenv("ADMIN_USERNAME") || request.Password != os.Getenv("ADMIN_PASSWORD") {
+		c.JSON(401, gin.H{"error": "Invalid Credentials"})
+		return
+	}
+
+	//JWT valid for one hour
+	claims := jwt.MapClaims{
+		"sub": request.Username,
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	//Sign JWT using our secret.
+	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		c.JSON(500, gin.H{"error": "could not create token"})
+		return
+	}
+
+	c.JSON(200, gin.H{"token": signedToken})
+}
 
 // Health confirms that the API process is running.
 func (api *API) Health(c *gin.Context) {

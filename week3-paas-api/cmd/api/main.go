@@ -12,6 +12,9 @@
 // registers middleware and handlers, and starts the server.
 // When a request comes, it goes through middleware first, then the handler, then the Kubernetes service.
 
+// Program entry point, configuration, logging and
+// server lifecycle
+
 package main
 
 import (

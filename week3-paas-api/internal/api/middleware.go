@@ -1,37 +1,51 @@
-//Bearer-token authentication and shared error
+//Bearer-token authentication(implemented using JWT) and shared error
 //translation. This file handles authentication and error handling.
 
 package api
 
 import (
-	"crypto/subtle"
 	"net/http"
+	"os"
+	"strings"
+
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
 )
 
-// Authenticate protects product endpoints with a bearer token.
+// Authenticate checks the JWT token before allowing access.
 func (api *API) Authenticate(c *gin.Context) {
-	expected := "Bearer " + api.token
-	provided := c.GetHeader("Authorization")
+	auth := c.GetHeader("Authorization")
 
-	if subtle.ConstantTimeCompare(
-		[]byte(provided),
-		[]byte(expected),
-	) != 1 {
-		c.AbortWithStatusJSON(
-			http.StatusUnauthorized,
-			models.ErrorResponse{
-				Error:   "Unauthorized",
-				Message: "invalid bearer token",
-			},
-		)
+	//Header must be: Bearer <JWT Token>
+	if !strings.HasPrefix(auth, "Bearer ") {
+		c.JSON(401, gin.H{"error": "missing bearer token"})
+		c.Abort()
 		return
 	}
 
+	tokenString := strings.TrimPrefix(auth, "Bearer" )
+
+	//verify signature and expiration
+	token, err := jwt.Parse(
+		tokenString,
+		func(token *jwt.Token) (any, error) {
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		},
+		jwt.WithValidMethods([]string{"HS256"}),
+
+	)
+
+	if err != nil || !token.Valid {
+	c.JSON(401, gin.H{"error": "Invalid or expired token"})
+		c.Abort()
+		return
+	}
+    
+	//JWT is valid --> continue to Handler(or allow access).
 	c.Next()
 }
 

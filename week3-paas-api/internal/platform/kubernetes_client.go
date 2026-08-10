@@ -1,4 +1,5 @@
 //This file has only one responsibility: Connect the Go application to Kubernetes.
+//file that connects your Go API to the Kubernetes cluster.
 
 package platform
 

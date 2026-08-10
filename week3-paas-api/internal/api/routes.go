@@ -1,3 +1,5 @@
+// Creates the Gin router and registers
+// public/protected routes.
 // This file defines which routes exist and which handler runs.
 package api
 
@@ -81,6 +83,7 @@ func NewRouter(
 
 	// Public health endpoint.
 	router.GET("/healthz", api.Health)
+	router.POST("/api/v1/login", api.login)
 
 	// All product endpoints require bearer-token authentication.
 	v1 := router.Group("/api/v1")
