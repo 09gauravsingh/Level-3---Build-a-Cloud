@@ -81,7 +81,7 @@ func NewRouter(
 		MaxAge:              12 * time.Hour,
 	}))
 
-	// Public health endpoint.
+	// Public health and login endpoints.
 	router.GET("/healthz", api.Health)
 	router.POST("/api/v1/login", api.login)
 
