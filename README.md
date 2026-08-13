@@ -6,6 +6,8 @@ self-contained directory that builds one layer of a cloud platform.
 | Directory | Topic |
 | --- | --- |
 | `week2-ske-paas` | A managed PostgreSQL Platform-as-a-Service on STACKIT Kubernetes Engine |
+| `week3-paas-api` | A Go REST API that provisions and deletes those PostgreSQL instances |
+| `week4-web-ui` | A Vue dashboard on top of the API, published over HTTPS |
 
 ## Week 2 — Managed PostgreSQL on SKE
 
