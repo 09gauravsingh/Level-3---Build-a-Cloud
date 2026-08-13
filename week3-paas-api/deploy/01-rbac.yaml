@@ -1,0 +1,66 @@
+#create RBAC (Role Based Access Control) for the PaaS control-plane API.
+# Namespace containing the PaaS control-plane API.
+
+# RBAC decides:
+# Who is making the request?
+# What are they allowed to do?
+# On which Kubernetes resources?
+# In which namespace?
+
+
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paas-system
+
+---
+# Identity used by the Go API Pod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: week3-paas-api
+  namespace: paas-system
+
+---
+# Permissions are restricted to the database-services namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: week3-paas-api
+  namespace: database-services
+rules:
+  # Manage CloudNativePG Cluster custom resources.
+  - apiGroups:
+      - postgresql.cnpg.io
+    resources:
+      - clusters
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+
+  # Read CloudNativePG-generated connection Secrets.
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+
+---
+# Connect the API ServiceAccount to the database-management Role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: week3-paas-api
+  namespace: database-services
+subjects:
+  - kind: ServiceAccount
+    name: week3-paas-api
+    namespace: paas-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: week3-paas-api

@@ -1,0 +1,442 @@
+# Official API contract for the PostgreSQL PaaS API.
+openapi: 3.0.4
+
+info:
+  title: PostgreSQL PaaS API
+  version: 1.0.0
+  description: |
+    REST API for creating, listing and deleting managed PostgreSQL
+    instances on STACKIT Kubernetes Engine.
+
+    The API creates CloudNativePG Cluster resources. CloudNativePG
+    performs the actual PostgreSQL provisioning and lifecycle management.
+
+servers:
+  # Current local development address.
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Health
+    description: API health checks
+
+  - name: Instances
+    description: PostgreSQL product-instance lifecycle
+
+  - name: Connection
+    description: Database connection and access data
+
+# Authentication is required by default.
+security:
+  - bearerAuth: []
+
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Check API health
+      operationId: getHealth
+
+      # Health is public and does not require a token.
+      security: []
+
+      responses:
+        "200":
+          description: API process is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                service: week3-paas-api
+
+  /api/v1/instances:
+    post:
+      tags: [Instances]
+      summary: Create a PostgreSQL instance
+      operationId: createInstance
+      description: |
+        Creates a CloudNativePG Cluster resource.
+
+        Provisioning is asynchronous. The response confirms that the
+        request was accepted, but PostgreSQL may still be starting.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInstanceRequest"
+            example:
+              name: week3-demo-db
+              instances: 1
+              storageSize: 1Gi
+              database: demoapp
+              owner: demoowner
+
+      responses:
+        "202":
+          description: Instance creation was accepted
+          headers:
+            Location:
+              description: API path of the new instance
+              schema:
+                type: string
+              example: /api/v1/instances/week3-demo-db
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [Instances]
+      summary: List PostgreSQL instances
+      operationId: listInstances
+      description: |
+        Returns only CloudNativePG clusters created and managed by
+        this PaaS API.
+
+      responses:
+        "200":
+          description: List of API-managed PostgreSQL instances
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceList"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/instances/{name}:
+    delete:
+      tags: [Instances]
+      summary: Delete a PostgreSQL instance
+      operationId: deleteInstance
+      description: |
+        Deletes the CloudNativePG Cluster resource.
+
+        Kubernetes and CloudNativePG perform the actual cleanup
+        asynchronously.
+
+      parameters:
+        - $ref: "#/components/parameters/InstanceName"
+
+      responses:
+        "202":
+          description: Instance deletion was accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperationResponse"
+              example:
+                name: week3-demo-db
+                status: Deleting
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/instances/{name}/connection:
+    get:
+      tags: [Connection]
+      summary: Get PostgreSQL connection data
+      operationId: getConnection
+      description: |
+        Reads connection data from the CloudNativePG application Secret.
+
+        The response contains sensitive information and must not be cached.
+
+      parameters:
+        - $ref: "#/components/parameters/InstanceName"
+
+      responses:
+        "200":
+          description: PostgreSQL connection and access data
+          headers:
+            Cache-Control:
+              description: Prevents credential caching
+              schema:
+                type: string
+              example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionData"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    # Client sends: Authorization: Bearer <token>
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token protecting the PaaS endpoints
+
+  parameters:
+    InstanceName:
+      name: name
+      in: path
+      required: true
+      description: Name of the PostgreSQL product instance
+      schema:
+        type: string
+        pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      example: week3-demo-db
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: week3-paas-api
+
+    CreateInstanceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Kubernetes-compatible instance name
+          pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          example: week3-demo-db
+
+        instances:
+          type: integer
+          format: int64
+          description: Number of PostgreSQL instances
+          minimum: 1
+          maximum: 3
+          default: 1
+          example: 1
+
+        storageSize:
+          type: string
+          description: Kubernetes persistent-storage quantity
+          default: 1Gi
+          example: 1Gi
+
+        database:
+          type: string
+          description: Initial PostgreSQL database name
+          default: app
+          example: demoapp
+
+        owner:
+          type: string
+          description: |
+            Owner of the initial database. When omitted, the API uses
+            the database name.
+          example: demoowner
+
+    Instance:
+      type: object
+      required:
+        - name
+        - namespace
+        - status
+        - desiredInstances
+        - readyInstances
+      properties:
+        name:
+          type: string
+          example: week3-demo-db
+
+        namespace:
+          type: string
+          example: database-services
+
+        status:
+          type: string
+          description: Current CloudNativePG cluster phase
+          example: Cluster in healthy state
+
+        desiredInstances:
+          type: integer
+          format: int64
+          example: 1
+
+        readyInstances:
+          type: integer
+          format: int64
+          example: 1
+
+        primary:
+          type: string
+          description: Current primary PostgreSQL Pod
+          example: week3-demo-db-1
+
+        storageSize:
+          type: string
+          example: 1Gi
+
+        database:
+          type: string
+          example: demoapp
+
+        owner:
+          type: string
+          example: demoowner
+
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-08-05T08:30:00Z"
+
+    InstanceList:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Instance"
+
+        count:
+          type: integer
+          minimum: 0
+          example: 1
+
+    ConnectionData:
+      type: object
+      required:
+        - host
+        - port
+        - database
+        - username
+        - password
+      properties:
+        host:
+          type: string
+          example: week3-demo-db-rw
+
+        port:
+          type: integer
+          example: 5432
+
+        database:
+          type: string
+          example: demoapp
+
+        username:
+          type: string
+          example: demoowner
+
+        password:
+          type: string
+          format: password
+          description: Password generated by CloudNativePG
+          example: generated-password
+
+        uri:
+          type: string
+          description: Complete PostgreSQL connection URI
+          example: postgresql://demoowner:password@week3-demo-db-rw:5432/demoapp
+
+    OperationResponse:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+          example: week3-demo-db
+
+        status:
+          type: string
+          example: Deleting
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          example: Bad Request
+
+        message:
+          type: string
+          example: invalid JSON request
+
+  responses:
+    BadRequest:
+      description: Request JSON or values are invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Bad Request
+            message: instances must be between 1 and 3
+
+    Unauthorized:
+      description: Bearer token is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Unauthorized
+            message: invalid bearer token
+
+    NotFound:
+      description: The requested instance was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Not Found
+            message: instance not found
+
+    Conflict:
+      description: An instance with the same name already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Conflict
+            message: instance already exists
+
+    InternalError:
+      description: The Kubernetes operation failed unexpectedly
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Internal Server Error
+            message: operation failed

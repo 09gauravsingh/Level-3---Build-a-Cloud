@@ -1,0 +1,115 @@
+# This YAML file creates two Kubernetes objects:
+# Why are we creating two objects?
+# Deployment
+# → creates and maintains the API Pod(it runs the GO API server)
+
+# Service
+# → provides a stable network address for the Pod
+
+# Pods can be replaced and receive new IP addresses. The Service remains stable.
+
+
+
+
+# Runs the Go API as a Kubernetes workload.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: week3-paas-api
+  namespace: paas-system
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: week3-paas-api
+
+  template:
+    metadata:
+      labels:
+        app: week3-paas-api
+
+    spec:
+      serviceAccountName: week3-paas-api
+
+      # Credentials used only for pulling the private image.
+      imagePullSecrets:
+        - name: stackit-registry
+
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: api
+          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.0.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          env:
+            # Protect the REST endpoints with the Kubernetes Secret.
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: week3-paas-api-auth
+                  key: API_TOKEN
+
+            # PostgreSQL resources are managed in this namespace.
+            - name: PAAS_NAMESPACE
+              value: database-services
+
+            - name: PORT
+              value: "8080"
+
+          # Kubernetes checks whether the process is alive.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          # Kubernetes sends traffic only when the API is ready.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+---
+# Provides a stable internal address for the API Pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: week3-paas-api
+  namespace: paas-system
+spec:
+  selector:
+    app: week3-paas-api
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+  type: ClusterIP

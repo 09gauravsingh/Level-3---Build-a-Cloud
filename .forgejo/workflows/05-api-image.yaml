@@ -1,0 +1,54 @@
+name: Week 3 API Image
+
+on:  
+  push:
+    branches:
+      - week3-paas-api
+
+    # Build only when application or image files change.
+    paths:
+      - "week3-paas-api/cmd/**"
+      - "week3-paas-api/internal/**"
+      - "week3-paas-api/go.mod"
+      - "week3-paas-api/go.sum"
+      - "week3-paas-api/Dockerfile"
+      - "week3-paas-api/.dockerignore"
+      - ".forgejo/workflows/05-api-image.yaml"
+
+jobs:
+  build-and-push:
+    runs-on: stackit-ubuntu-22
+
+    steps:
+      # Download the repository onto the runner.
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Authenticate the runner to the private registry.
+      - name: Log in to STACKIT Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.onstackit.cloud
+          username: ${{ secrets.CR_PUSH_USERNAME }}
+          password: ${{ secrets.CR_PUSH_PASSWORD }}
+
+      # Build the Dockerfile and upload the resulting image.
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./week3-paas-api
+          file: ./week3-paas-api/Dockerfile
+          push: true
+          tags: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v2.0.0
+
+
+
+
+# what the workflow does:
+# 1. STACKIT runner starts
+# 2. Repository is downloaded
+# 3. Runner logs in to Container Registry
+# 4. Docker reads the Dockerfile
+# 5. Go API is compiled inside the builder stage
+# 6. Runtime image is created
+# 7. Image is pushed as v1.0.0

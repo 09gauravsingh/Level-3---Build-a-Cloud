@@ -16,6 +16,8 @@ crash.*.log
 kubeconfig.yaml
 kubeconfig*.yaml
 kubeconfig*.backup
+*-kubeconfig.yaml
+*-login.yaml
 *.key.json
 *service-account*.json
 credentials/
@@ -23,6 +25,14 @@ credentials/
 # Variable files that may carry private values
 terraform.tfvars
 *.auto.tfvars
+
+# Local Makefile settings, which carry the API token
+.env.secrets
+.env
+
+# Go build output and coverage reports
+bin/
+coverage.out
 
 # BEGIN CLOUD AUTOMATION SAFETY
 

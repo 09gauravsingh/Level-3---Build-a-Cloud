@@ -1,0 +1,9 @@
+# Files that are not required while building the API image.
+.git
+.gitignore
+README.md
+api/
+deploy/
+coverage.out
+*.log
+.DS_Store
