@@ -36,19 +36,16 @@ type PlatformService interface {
 type API struct {
 	service PlatformService
 	logger  *slog.Logger
-	token   string
 }
 
 // NewRouter creates the Gin router and registers all REST API routes.
 func NewRouter(
 	service PlatformService,
 	logger *slog.Logger,
-	token string,
 ) *gin.Engine {
 	api := &API{
 		service: service,
 		logger:  logger,
-		token:   token,
 	}
 
 	// Create a new Gin router.
@@ -62,6 +59,7 @@ func NewRouter(
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"https://editor.swagger.io",
+			"http://localhost:5173",
 		},
 		AllowMethods: []string{
 			http.MethodGet,

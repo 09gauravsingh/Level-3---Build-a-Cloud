@@ -15,6 +15,7 @@ import (
 )
 
 // JWT Authentication Code:
+// it will check whether the username/password are correct.
 func (api *API) login(c *gin.Context) {
 	var request struct {
 		Username string `json:"username"`

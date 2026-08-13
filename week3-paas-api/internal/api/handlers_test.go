@@ -7,15 +7,50 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-// testToken is the bearer token the test router is configured to accept.
-const testToken = "test-token"
+// Credentials the API is configured with for the whole test binary.
+const (
+	testSecret   = "test-secret"
+	testUsername = "test-admin"
+	testPassword = "test-password"
+)
+
+// TestMain configures the environment the login handler and the
+// authentication middleware read from, before any test runs.
+func TestMain(m *testing.M) {
+	os.Setenv("JWT_SECRET", testSecret)
+	os.Setenv("ADMIN_USERNAME", testUsername)
+	os.Setenv("ADMIN_PASSWORD", testPassword)
+
+	os.Exit(m.Run())
+}
+
+// signedTestToken mints a JWT that the middleware accepts: signed with the
+// same secret, using the same algorithm, and not yet expired.
+func signedTestToken(t *testing.T) string {
+	t.Helper()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": testUsername,
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+
+	signed, err := token.SignedString([]byte(testSecret))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return signed
+}
 
 // Readable arguments for performRequest, so call sites read as
 // performRequest(router, http.MethodGet, path, noBody, withAuth)
@@ -79,7 +114,7 @@ func newTestRouter(service PlatformService) http.Handler {
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	return NewRouter(service, logger, testToken)
+	return NewRouter(service, logger)
 }
 
 // performRequest runs one in-memory HTTP request through the router and
@@ -99,7 +134,7 @@ func performRequest(
 	}
 
 	if authenticated {
-		request.Header.Set("Authorization", "Bearer "+testToken)
+		request.Header.Set("Authorization", "Bearer "+signedTestToken(t))
 	}
 
 	response := httptest.NewRecorder()
@@ -140,6 +175,58 @@ func TestAuthentication(t *testing.T) {
 	router := newTestRouter(&fakeService{})
 
 	response := performRequest(t, router, http.MethodGet, "/api/v1/instances", noBody, withoutAuth)
+
+	requireStatus(t, response, http.StatusUnauthorized)
+}
+
+// TestAuthenticationRejectsForeignToken: a well-formed JWT signed with the
+// wrong secret must not grant access.
+func TestAuthenticationRejectsForeignToken(t *testing.T) {
+	router := newTestRouter(&fakeService{})
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": testUsername,
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+
+	signed, err := token.SignedString([]byte("another-secret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/instances", nil)
+	request.Header.Set("Authorization", "Bearer "+signed)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	requireStatus(t, response, http.StatusUnauthorized)
+}
+
+// TestLogin: valid credentials return a token the protected routes accept,
+// and wrong credentials are refused.
+func TestLogin(t *testing.T) {
+	router := newTestRouter(&fakeService{})
+
+	body := `{"username":"` + testUsername + `","password":"` + testPassword + `"}`
+
+	response := performRequest(t, router, http.MethodPost, "/api/v1/login", body, withoutAuth)
+
+	requireStatus(t, response, http.StatusOK)
+
+	var result struct {
+		Token string `json:"token"`
+	}
+
+	decodeBody(t, response, &result)
+
+	if result.Token == "" {
+		t.Fatal("expected a token in the login response")
+	}
+
+	wrong := `{"username":"` + testUsername + `","password":"wrong"}`
+
+	response = performRequest(t, router, http.MethodPost, "/api/v1/login", wrong, withoutAuth)
 
 	requireStatus(t, response, http.StatusUnauthorized)
 }

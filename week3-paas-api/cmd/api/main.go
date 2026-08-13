@@ -1,19 +1,10 @@
-// cmd/api/
-// ├── main.go                  # Configuration, routing, and server startup
-// ├── api.go                   # API structure and service interface
-// ├── handlers.go              # REST endpoint logic
-// ├── middleware.go            # Authentication and error handling
-// ├── models.go                # JSON request and response structures
-// ├── kubernetes_client.go     # Kubernetes connection
-// └── kubernetes_instances.go  # Kubernetes product operations
-
-// The program starts in main.go.
-// main.go creates the API object from api.go,
-// registers middleware and handlers, and starts the server.
-// When a request comes, it goes through middleware first, then the handler, then the Kubernetes service.
-
-// Program entry point, configuration, logging and
-// server lifecycle
+// cmd/api/ // ├── main.go # Configuration, routing, and server startup
+// // ├── api.go # API structure and service interface // ├── handlers.go # REST endpoint logic
+// // ├── middleware.go # Authentication and error handling // ├── models.go # JSON request and response structures
+//  // ├── kubernetes_client.go # Kubernetes connection // └── kubernetes_instances.go # Kubernetes product operations
+// // The program starts in main.go. // main.go creates the API object from api.go, // registers middleware and handlers, and starts the server.
+// // When a request comes, it goes through middleware first,
+// then the handler, then the Kubernetes service. // Program entry point, configuration, logging and // server lifecycle
 
 package main
 
@@ -37,12 +28,16 @@ func main() {
 		slog.NewJSONHandler(os.Stdout, nil),
 	)
 
-	token := os.Getenv("API_TOKEN")
-	if token == "" {
-		logger.Error("API_TOKEN is required")
+	// Week 4: JWT authentication requires these values.
+	if os.Getenv("ADMIN_USERNAME") == "" ||
+		os.Getenv("ADMIN_PASSWORD") == "" ||
+		os.Getenv("JWT_SECRET") == "" {
+
+		logger.Error("JWT authentication configuration is required")
 		os.Exit(1)
 	}
 
+	// Namespace where PostgreSQL instances are managed.
 	namespace := envOrDefault(
 		"PAAS_NAMESPACE",
 		"database-services",
@@ -61,17 +56,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Configure HTTP server.
 	server := &http.Server{
 		Addr: ":" + port,
+
 		Handler: apihttp.NewRouter(
 			service,
 			logger,
-			token,
 		),
+
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	// Handle Control+C and Kubernetes termination signals.
+	// Handle Ctrl+C and Kubernetes termination.
 	stopContext, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
@@ -89,8 +86,10 @@ func main() {
 		)
 
 		err := server.ListenAndServe()
+
 		if err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {
+
 			logger.Error(
 				"API server failed",
 				"error",
@@ -101,13 +100,13 @@ func main() {
 
 	<-stopContext.Done()
 
+	// Give active requests time to finish.
 	shutdownContext, cancel := context.WithTimeout(
 		context.Background(),
 		10*time.Second,
 	)
 	defer cancel()
 
-	// Allow active HTTP requests to finish.
 	if err := server.Shutdown(shutdownContext); err != nil {
 		logger.Error("shutdown failed", "error", err)
 		os.Exit(1)

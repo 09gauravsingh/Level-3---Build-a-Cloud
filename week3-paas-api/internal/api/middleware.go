@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +26,7 @@ func (api *API) Authenticate(c *gin.Context) {
 		return
 	}
 
-	tokenString := strings.TrimPrefix(auth, "Bearer" )
+	tokenString := strings.TrimPrefix(auth, "Bearer ")
 
 	//verify signature and expiration
 	token, err := jwt.Parse(
@@ -36,15 +35,14 @@ func (api *API) Authenticate(c *gin.Context) {
 			return []byte(os.Getenv("JWT_SECRET")), nil
 		},
 		jwt.WithValidMethods([]string{"HS256"}),
-
 	)
 
 	if err != nil || !token.Valid {
-	c.JSON(401, gin.H{"error": "Invalid or expired token"})
+		c.JSON(401, gin.H{"error": "Invalid or expired token"})
 		c.Abort()
 		return
 	}
-    
+
 	//JWT is valid --> continue to Handler(or allow access).
 	c.Next()
 }
