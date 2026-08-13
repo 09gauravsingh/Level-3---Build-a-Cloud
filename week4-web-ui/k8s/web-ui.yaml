@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: week4-web-ui
+  namespace: paas-system
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: week4-web-ui
+
+  template:
+    metadata:
+      labels:
+        app: week4-web-ui
+
+    spec:
+      imagePullSecrets:
+        - name: stackit-registry
+
+      containers:
+        - name: web-ui
+          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week4-web-ui:v1.0.1
+
+          ports:
+            - containerPort: 80
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: week4-web-ui
+  namespace: paas-system
+
+spec:
+  selector:
+    app: week4-web-ui
+
+  ports:
+    - port: 80
+      targetPort: 80
