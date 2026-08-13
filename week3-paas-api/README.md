@@ -8,7 +8,7 @@ Every long command is wrapped in the `Makefile`. Run `make` to list them all.
 
 | Command | Purpose |
 | --- | --- |
-| `make run` | Start the server with KUBECONFIG, API_TOKEN, PAAS_NAMESPACE and PORT already set |
+| `make run` | Start the server with KUBECONFIG, JWT/login secrets, PAAS_NAMESPACE and PORT already set |
 | `make stop` | Kill whatever still listens on port 8080 |
 | `make restart` | Free the port and start the server again |
 | `make check` | Tidy, format, vet and test before a commit |
@@ -25,13 +25,14 @@ Every long command is wrapped in the `Makefile`. Run `make` to list them all.
 | `make docker-build` | Build the container image |
 
 Values may be overridden per command, for example `make run PORT=9090`.
-Permanent values, including the API token, live in `.env.secrets`.
+Permanent values, including `API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+and `JWT_SECRET`, live in `.env.secrets`.
 That file stays on your machine and is never committed.
 
-`eval "$(make load)"` puts `KUBECONFIG`, `API_TOKEN`, `PAAS_NAMESPACE` and
-`PORT` into the current shell, so plain `kubectl` works afterwards. A make
-recipe runs in a child shell and cannot export into its caller, which is why
-the exports are evaluated rather than set.
+`eval "$(make load)"` puts `KUBECONFIG`, auth secrets, `PAAS_NAMESPACE` and
+`PORT` into the current shell, so plain `kubectl` / `go run` works afterwards.
+A make recipe runs in a child shell and cannot export into its caller, which
+is why the exports are evaluated rather than set.
 
 ## Cluster commands
 

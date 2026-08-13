@@ -11,12 +11,9 @@ RUN go mod download
 COPY . .
 
 # CGO is disabled so the binary can run in a small runtime image.
-RUN CGO_ENABLED=0 GOOS=linux \
-    go build \
-    -trimpath \
-    -ldflags="-s -w" \
-    -o /output/week3-paas-api \
-    ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" \
+    -o /output/week3-paas-api ./cmd/api
 
 # Stage 2: Create the small runtime image.
 FROM alpine:3.22

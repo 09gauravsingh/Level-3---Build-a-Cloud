@@ -16,15 +16,22 @@ SHELL := /bin/bash
 # It carries no credentials itself: kubectl and the API server ask the
 # STACKIT CLI for a fresh token on every call, so it never expires.
 KUBECONFIG ?= $(HOME)/.kube/lvl3-paas-login.yaml  
-# need to remove brackets from Home to run the command separately.(remove spaces between spaces in the path)
+# need to remove brackets from Home and (?) to run the command separately.(remove spaces between spaces in the path)
 
 # The SKE cluster that the login kubeconfig points to, and the STACKIT
 # project that owns it. Both match the Week 2 Terraform variables.
 CLUSTER    ?= lvl3-paas
 PROJECT_ID ?= 20a60c06-1e1a-406f-a840-37d1ff14f0e8
 
-# Bearer token required by the REST API middleware.
+# Legacy env var still required by main.go at startup (unused by JWT middleware).
 API_TOKEN ?= local-week3-development-token
+
+# Login credentials for POST /api/v1/login (Web UI and curl).
+ADMIN_USERNAME ?= admin
+ADMIN_PASSWORD ?= week4-password
+
+# Secret used to sign and verify JWTs. Keep stable across local restarts.
+JWT_SECRET ?= my-week4-super-secret-key
 
 # Namespace that holds the CloudNativePG clusters.
 PAAS_NAMESPACE ?= database-services
@@ -45,6 +52,7 @@ ROLLOUT_TIMEOUT ?= 300s
 
 # The API server reads these from the environment.
 export KUBECONFIG API_TOKEN PAAS_NAMESPACE PORT GIN_MODE
+export ADMIN_USERNAME ADMIN_PASSWORD JWT_SECRET
 
 # --- Values used by the curl helpers ----------------------------------------
 
@@ -361,8 +369,10 @@ docs: openapi ## Copy the contract to the clipboard and open Swagger Editor
 
 ##@ Container
 
+# --load is required because buildx defaults to the docker-container driver,
+# which otherwise leaves the result in the build cache only.
 docker-build: ## Build the container image
-	docker build -t $(IMAGE) .
+	docker build --load -t $(IMAGE) .
 
 docker-kubeconfig: ## Write a short-lived kubeconfig the container can use on its own
 	@mkdir -p "$$(dirname "$(DOCKER_KUBECONFIG)")"
@@ -393,6 +403,9 @@ env: ## Print the exports for a plain shell: eval "$(make env)"
 	@printf 'export KUBECONFIG="%s"\n' \
 		"$$(realpath "$(KUBECONFIG)" 2>/dev/null || echo "$(KUBECONFIG)")"
 	@echo 'export API_TOKEN="$(API_TOKEN)"'
+	@echo 'export ADMIN_USERNAME="$(ADMIN_USERNAME)"'
+	@echo 'export ADMIN_PASSWORD="$(ADMIN_PASSWORD)"'
+	@echo 'export JWT_SECRET="$(JWT_SECRET)"'
 	@echo 'export PAAS_NAMESPACE="$(PAAS_NAMESPACE)"'
 	@echo 'export PORT="$(PORT)"'
 
