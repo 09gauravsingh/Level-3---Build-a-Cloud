@@ -13,8 +13,13 @@ type CreateInstanceRequest struct {
 
 // Instance represents one PostgreSQL product instance.
 type Instance struct {
-	Name             string `json:"name"`
-	Namespace        string `json:"namespace"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+
+	// OwnedBy is the platform user who created the instance.
+	// Owner below is the PostgreSQL role that owns the database.
+	OwnedBy string `json:"ownedBy,omitempty"`
+
 	Status           string `json:"status"`
 	DesiredInstances int64  `json:"desiredInstances"`
 	ReadyInstances   int64  `json:"readyInstances"`

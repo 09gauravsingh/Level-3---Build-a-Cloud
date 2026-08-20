@@ -34,6 +34,10 @@ terraform.tfvars
 bin/
 coverage.out
 
+# Local SQLite user store created by the PaaS API
+**/users.db
+**/users.db-*
+
 # BEGIN CLOUD AUTOMATION SAFETY
 
 # Terraform working directories

@@ -1,0 +1,136 @@
+# Small production-sensible Loki deployment.
+deploymentMode: Monolithic
+
+loki:
+  # I used Loki internally as a single-tenant service.
+  auth_enabled: false
+
+  # One Loki replica = replication factor 1.
+  commonConfig:
+    replication_factor: 1
+
+  # Current recommended TSDB schema.
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  # Persistent log storage in STACKIT Object Storage.
+  storage:
+    type: s3
+
+    bucketNames:
+      chunks: "gaurav-paas-loki-chunks"
+      ruler: "gaurav-paas-loki-ruler"
+
+    s3:
+      endpoint: https://object.storage.eu01.onstackit.cloud
+      region: eu01
+
+      # STACKIT supports S3 path-style addressing.
+      s3ForcePathStyle: true
+
+      # STACKIT endpoint already uses HTTPS.
+      insecure: false
+
+  # Keep logs for 7 days.
+  limits_config:
+    retention_period: 168h
+    allow_structured_metadata: true
+    volume_enabled: true
+
+  # Actually delete logs after retention expires.
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+
+
+singleBinary:
+  replicas: 1
+
+  # Read S3 credentials from Kubernetes Secret.
+  extraEnvFrom:
+    - secretRef:
+        name: loki-s3
+
+  # Persistent local state/WAL.
+  persistence:
+    enabled: true
+    storageClass: premium-perf1-stackit
+    size: 10Gi
+    whenDeleted: Retain
+    whenScaled: Retain
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+
+# Internal access only.
+gateway:
+  enabled: true
+  service:
+    type: ClusterIP
+
+
+# External object storage is used.
+minio:
+  enabled: false
+
+
+# Save memory on our small 2-node SKE cluster.
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+
+# Disable other Loki deployment modes.
+backend:
+  replicas: 0
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+ingester:
+  replicas: 0
+
+querier:
+  replicas: 0
+
+queryFrontend:
+  replicas: 0
+
+queryScheduler:
+  replicas: 0
+
+distributor:
+  replicas: 0
+
+compactor:
+  replicas: 0
+
+indexGateway:
+  replicas: 0
+
+bloomPlanner:
+  replicas: 0
+
+bloomBuilder:
+  replicas: 0
+
+bloomGateway:
+  replicas: 0

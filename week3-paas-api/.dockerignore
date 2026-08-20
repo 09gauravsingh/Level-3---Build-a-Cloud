@@ -6,4 +6,6 @@ api/
 deploy/
 coverage.out
 *.log
+users.db
+users.db-*
 .DS_Store

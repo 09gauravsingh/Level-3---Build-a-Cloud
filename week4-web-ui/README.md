@@ -1,8 +1,9 @@
 # week4-web-ui
 
 Vue 3 + Vite dashboard for the PostgreSQL PaaS platform. It talks to the
-`week3-paas-api` Go service and lets an operator sign in, provision
-CloudNativePG instances, inspect connection credentials and delete instances.
+`week3-paas-api` Go service and lets operators and registered users sign in,
+provision CloudNativePG instances, inspect connection credentials and delete
+instances. Each non-admin user only sees the instances they created.
 
 ## Requirements
 
@@ -45,14 +46,20 @@ visitor's browser would resolve it to their own machine instead of the cluster.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `POST` | `/api/v1/register` | Create a platform account, returns `{ username }` |
 | `POST` | `/api/v1/login` | Exchange credentials for a JWT (valid one hour) |
-| `GET` | `/api/v1/instances` | List instances, returns `{ items, count }` |
+| `GET` | `/api/v1/instances` | List instances owned by the signed-in user (admins see all), returns `{ items, count }` |
 | `POST` | `/api/v1/instances` | Create an instance, returns `202 Accepted` |
 | `DELETE` | `/api/v1/instances/:name` | Start deletion, returns `202 Accepted` |
 | `GET` | `/api/v1/instances/:name/connection` | Read credentials from the CNPG secret |
 
-The JWT is stored in `localStorage`. Any `401` response clears it and returns
-the user to the login screen.
+The JWT is stored in `localStorage`. The UI reads `sub` (username) and `role`
+(`admin` or `user`) from the payload. Any `401` response clears the token
+and returns the user to the login screen. After a successful register the
+dashboard signs the new user in immediately.
+
+How those calls reach Kubernetes, and how one user's instances stay
+invisible to another, is in [../architecture.md](../architecture.md).
 
 ## Project structure
 
@@ -62,7 +69,7 @@ src/
 ├── composables/useToasts.js   # shared toast notification state
 ├── components/
 │   ├── AppHeader.vue          # top bar with session info and logout
-│   ├── LoginView.vue          # sign-in screen
+│   ├── LoginView.vue          # sign-in and create-account screen
 │   ├── PlatformStats.vue      # instance/health/replica summary
 │   ├── CreateInstanceForm.vue # create form with client-side validation
 │   ├── InstanceList.vue       # searchable list, empty and loading states

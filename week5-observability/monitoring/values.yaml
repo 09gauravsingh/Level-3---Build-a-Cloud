@@ -1,0 +1,80 @@
+#this yaml file is for installing and configuring Prometheus + Grafana monitoring 
+#inside your Kubernetes cluster using Helm.
+
+# Alertmanager is not required by our Week 5 scope yet.
+alertmanager:
+  enabled: false
+
+# SKE manages the Kubernetes control plane.
+# We skip these direct control-plane scrape targets for now.
+kubeEtcd:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+
+grafana:
+  enabled: true
+
+  # Persist Grafana dashboards/settings.
+  persistence:
+    enabled: true
+    type: sts
+    storageClassName: premium-perf1-stackit
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+prometheus:
+  prometheusSpec:
+
+    # Keep metrics for one week.
+    retention: 7d
+
+    # One replica is enough for our current 2-node cluster.
+    replicas: 1
+
+    # We are not using Alertmanager yet.
+    disableAlerting: true
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+    # Later this lets Prometheus discover our Go API ServiceMonitor.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+
+    # Persist Prometheus metrics.
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: premium-perf1-stackit
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi

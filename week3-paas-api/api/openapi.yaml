@@ -20,6 +20,9 @@ tags:
   - name: Health
     description: API health checks
 
+  - name: Auth
+    description: Account registration and login
+
   - name: Instances
     description: PostgreSQL product-instance lifecycle
 
@@ -50,6 +53,86 @@ paths:
               example:
                 status: ok
                 service: week3-paas-api
+
+  /api/v1/register:
+    post:
+      tags: [Auth]
+      summary: Register a new account
+      operationId: register
+      security: []
+      description: |
+        Creates a platform user stored in SQLite.
+
+        The username becomes a Kubernetes label value, so it must be
+        3-32 lowercase letters, numbers or hyphens. The administrator
+        username from the environment is reserved.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsRequest"
+            example:
+              username: alice
+              password: alice-password
+
+      responses:
+        "201":
+          description: Account was created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+              example:
+                username: alice
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/login:
+    post:
+      tags: [Auth]
+      summary: Exchange credentials for a JWT
+      operationId: login
+      security: []
+      description: |
+        Accepts the environment administrator or a registered SQLite
+        user. The token is valid for one hour and carries `sub` and
+        `role` (`admin` or `user`).
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsRequest"
+            example:
+              username: alice
+              password: alice-password
+
+      responses:
+        "200":
+          description: Signed JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /api/v1/instances:
     post:
@@ -106,8 +189,9 @@ paths:
       summary: List PostgreSQL instances
       operationId: listInstances
       description: |
-        Returns only CloudNativePG clusters created and managed by
-        this PaaS API.
+        Returns CloudNativePG clusters created and managed by this
+        PaaS API. Ordinary users only see their own instances.
+        Administrators see every managed instance.
 
       responses:
         "200":
@@ -224,6 +308,34 @@ components:
           type: string
           example: week3-paas-api
 
+    CredentialsRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: alice
+        password:
+          type: string
+          format: password
+          example: alice-password
+
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: JWT valid for one hour
+
+    RegisterResponse:
+      type: object
+      required: [username]
+      properties:
+        username:
+          type: string
+          example: alice
+
     CreateInstanceRequest:
       type: object
       required: [name]
@@ -278,6 +390,11 @@ components:
         namespace:
           type: string
           example: database-services
+
+        ownedBy:
+          type: string
+          description: Platform user who created the instance
+          example: alice
 
         status:
           type: string

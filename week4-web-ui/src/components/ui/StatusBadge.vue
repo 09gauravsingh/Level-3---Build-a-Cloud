@@ -18,19 +18,19 @@ const tone = computed(() => {
 })
 
 const styles = {
-  healthy: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30',
-  failed: 'bg-rose-500/10 text-rose-300 ring-rose-500/30',
-  deleting: 'bg-slate-500/10 text-slate-300 ring-slate-500/30',
-  pending: 'bg-amber-500/10 text-amber-300 ring-amber-500/30',
-  unknown: 'bg-slate-500/10 text-slate-400 ring-slate-500/30',
+  healthy: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  failed: 'bg-rose-50 text-rose-700 ring-rose-600/20',
+  deleting: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+  pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  unknown: 'bg-slate-100 text-slate-500 ring-slate-500/20',
 }
 
 const dotStyles = {
-  healthy: 'bg-emerald-400',
-  failed: 'bg-rose-400',
+  healthy: 'bg-emerald-500',
+  failed: 'bg-rose-500',
   deleting: 'bg-slate-400',
-  pending: 'bg-amber-400 animate-pulse',
-  unknown: 'bg-slate-500',
+  pending: 'bg-amber-500 animate-pulse',
+  unknown: 'bg-slate-400',
 }
 </script>
 

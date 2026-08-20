@@ -5,7 +5,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (value) => ['primary', 'secondary', 'ghost', 'danger'].includes(value),
+    validator: (value) => ['primary', 'secondary', 'ghost', 'danger', 'danger-solid'].includes(value),
   },
   size: {
     type: String,
@@ -20,13 +20,14 @@ const props = defineProps({
 
 const variants = {
   primary:
-    'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20 hover:bg-sky-400 focus-visible:outline-sky-400',
+    'bg-indigo-600 text-white shadow-sm shadow-indigo-600/25 hover:bg-indigo-500 active:bg-indigo-700 focus-visible:outline-indigo-600',
   secondary:
-    'bg-white/5 text-slate-100 ring-1 ring-inset ring-white/10 hover:bg-white/10 focus-visible:outline-slate-400',
-  ghost:
-    'text-slate-400 hover:bg-white/5 hover:text-slate-100 focus-visible:outline-slate-400',
+    'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-slate-400',
+  ghost: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-slate-400',
   danger:
-    'bg-rose-500/10 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/20 focus-visible:outline-rose-400',
+    'bg-white text-rose-600 ring-1 ring-inset ring-rose-200 shadow-sm hover:bg-rose-50 focus-visible:outline-rose-500',
+  'danger-solid':
+    'bg-rose-600 text-white shadow-sm shadow-rose-600/25 hover:bg-rose-500 active:bg-rose-700 focus-visible:outline-rose-600',
 }
 
 const sizes = {
@@ -37,7 +38,7 @@ const sizes = {
 const classes = computed(() => [
   'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition',
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
-  'disabled:cursor-not-allowed disabled:opacity-50',
+  'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
   variants[props.variant],
   sizes[props.size],
   props.block ? 'w-full' : '',

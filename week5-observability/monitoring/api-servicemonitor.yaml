@@ -1,0 +1,26 @@
+#This file creates (Service Monitor) which tells Prometheus, Find the Kubernetes Service for 
+#week3-paas-api in the paas-system namespace,scrape its /metrics endpoint every 30 seconds, 
+#and collect those application metrics.
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+
+metadata:
+  name: week3-paas-api
+  namespace: monitoring
+
+spec:
+  # Find the Go API Service.
+  selector:
+    matchLabels:
+      app: week3-paas-api
+
+  # The Service is in paas-system.
+  namespaceSelector:
+    matchNames:
+      - paas-system
+
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

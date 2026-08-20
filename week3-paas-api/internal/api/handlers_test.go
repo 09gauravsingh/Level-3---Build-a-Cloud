@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -34,14 +35,23 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// signedTestToken mints a JWT that the middleware accepts: signed with the
-// same secret, using the same algorithm, and not yet expired.
+// signedTestToken mints an administrator JWT that the middleware accepts:
+// signed with the same secret, using the same algorithm, and not yet expired.
 func signedTestToken(t *testing.T) string {
 	t.Helper()
 
+	return signedTokenFor(t, testUsername, roleAdmin)
+}
+
+// signedTokenFor mints a JWT for one username and role, so tests can act as
+// an ordinary user whose view is limited to their own instances.
+func signedTokenFor(t *testing.T, username, role string) string {
+	t.Helper()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": testUsername,
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"sub":  username,
+		"role": role,
+		"exp":  time.Now().Add(time.Hour).Unix(),
 	})
 
 	signed, err := token.SignedString([]byte(testSecret))
@@ -67,54 +77,64 @@ const (
 // Each field holds the behavior for one interface method. A test sets only the
 // function it cares about; any method left nil returns a harmless zero value,
 // so tests stay focused on the endpoint under test.
+//
+// The trailing owner argument is the scope the handler derived from the JWT.
 type fakeService struct {
-	createFn     func(context.Context, models.CreateInstanceRequest) (models.Instance, error)
-	listFn       func(context.Context) ([]models.Instance, error)
-	deleteFn     func(context.Context, string) error
-	connectionFn func(context.Context, string) (models.ConnectionData, error)
+	createFn     func(context.Context, models.CreateInstanceRequest, string) (models.Instance, error)
+	listFn       func(context.Context, string) ([]models.Instance, error)
+	deleteFn     func(context.Context, string, string) error
+	connectionFn func(context.Context, string, string) (models.ConnectionData, error)
 }
 
-func (f *fakeService) Create(ctx context.Context, request models.CreateInstanceRequest) (models.Instance, error) {
+func (f *fakeService) Create(ctx context.Context, request models.CreateInstanceRequest, owner string) (models.Instance, error) {
 	if f.createFn == nil {
 		return models.Instance{}, nil
 	}
 
-	return f.createFn(ctx, request)
+	return f.createFn(ctx, request, owner)
 }
 
-func (f *fakeService) List(ctx context.Context) ([]models.Instance, error) {
+func (f *fakeService) List(ctx context.Context, owner string) ([]models.Instance, error) {
 	if f.listFn == nil {
 		return []models.Instance{}, nil
 	}
 
-	return f.listFn(ctx)
+	return f.listFn(ctx, owner)
 }
 
-func (f *fakeService) Delete(ctx context.Context, name string) error {
+func (f *fakeService) Delete(ctx context.Context, name, owner string) error {
 	if f.deleteFn == nil {
 		return nil
 	}
 
-	return f.deleteFn(ctx, name)
+	return f.deleteFn(ctx, name, owner)
 }
 
-func (f *fakeService) Connection(ctx context.Context, name string) (models.ConnectionData, error) {
+func (f *fakeService) Connection(ctx context.Context, name, owner string) (models.ConnectionData, error) {
 	if f.connectionFn == nil {
 		return models.ConnectionData{}, nil
 	}
 
-	return f.connectionFn(ctx, name)
+	return f.connectionFn(ctx, name, owner)
 }
 
 // newTestRouter builds the real router (real routes, real middleware) wired to
 // a fake service, so the tests exercise routing and auth but never touch a
-// cluster. Logs go to io.Discard to keep test output readable.
-func newTestRouter(service PlatformService) http.Handler {
+// cluster. Logs go to io.Discard to keep test output readable. Registered
+// users live in a throwaway SQLite file that disappears with the test.
+func newTestRouter(t *testing.T, service PlatformService) http.Handler {
+	t.Helper()
+
 	gin.SetMode(gin.TestMode)
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	return NewRouter(service, logger)
+	users, err := NewUserStore(filepath.Join(t.TempDir(), "users.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return NewRouter(service, logger, users)
 }
 
 // performRequest runs one in-memory HTTP request through the router and
@@ -163,7 +183,7 @@ func decodeBody(t *testing.T, response *httptest.ResponseRecorder, target any) {
 
 // TestHealth: /healthz is public and answers without a token.
 func TestHealth(t *testing.T) {
-	router := newTestRouter(&fakeService{})
+	router := newTestRouter(t, &fakeService{})
 
 	response := performRequest(t, router, http.MethodGet, "/healthz", noBody, withoutAuth)
 
@@ -172,7 +192,7 @@ func TestHealth(t *testing.T) {
 
 // TestAuthentication: /api/v1 routes are rejected when the token is missing.
 func TestAuthentication(t *testing.T) {
-	router := newTestRouter(&fakeService{})
+	router := newTestRouter(t, &fakeService{})
 
 	response := performRequest(t, router, http.MethodGet, "/api/v1/instances", noBody, withoutAuth)
 
@@ -182,7 +202,7 @@ func TestAuthentication(t *testing.T) {
 // TestAuthenticationRejectsForeignToken: a well-formed JWT signed with the
 // wrong secret must not grant access.
 func TestAuthenticationRejectsForeignToken(t *testing.T) {
-	router := newTestRouter(&fakeService{})
+	router := newTestRouter(t, &fakeService{})
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": testUsername,
@@ -206,7 +226,7 @@ func TestAuthenticationRejectsForeignToken(t *testing.T) {
 // TestLogin: valid credentials return a token the protected routes accept,
 // and wrong credentials are refused.
 func TestLogin(t *testing.T) {
-	router := newTestRouter(&fakeService{})
+	router := newTestRouter(t, &fakeService{})
 
 	body := `{"username":"` + testUsername + `","password":"` + testPassword + `"}`
 
@@ -237,7 +257,7 @@ func TestCreateInstance(t *testing.T) {
 	// The fake reflects the request back so we can prove the handler decoded
 	// the JSON body and passed it through to the service unchanged.
 	service := &fakeService{
-		createFn: func(_ context.Context, request models.CreateInstanceRequest) (models.Instance, error) {
+		createFn: func(_ context.Context, request models.CreateInstanceRequest, _ string) (models.Instance, error) {
 			return models.Instance{
 				Name:             request.Name,
 				Status:           "Provisioning",
@@ -246,7 +266,7 @@ func TestCreateInstance(t *testing.T) {
 		},
 	}
 
-	router := newTestRouter(service)
+	router := newTestRouter(t, service)
 
 	body := `{
 		"name": "demo-db",
@@ -277,14 +297,14 @@ func TestCreateInstance(t *testing.T) {
 // whose Count matches the number of items.
 func TestListInstances(t *testing.T) {
 	service := &fakeService{
-		listFn: func(_ context.Context) ([]models.Instance, error) {
+		listFn: func(_ context.Context, _ string) ([]models.Instance, error) {
 			return []models.Instance{
 				{Name: "demo-db", Status: "Ready"},
 			}, nil
 		},
 	}
 
-	router := newTestRouter(service)
+	router := newTestRouter(t, service)
 
 	response := performRequest(t, router, http.MethodGet, "/api/v1/instances", noBody, withAuth)
 
@@ -307,14 +327,14 @@ func TestDeleteInstance(t *testing.T) {
 	var deletedName string
 
 	service := &fakeService{
-		deleteFn: func(_ context.Context, name string) error {
+		deleteFn: func(_ context.Context, name, _ string) error {
 			deletedName = name
 
 			return nil
 		},
 	}
 
-	router := newTestRouter(service)
+	router := newTestRouter(t, service)
 
 	response := performRequest(t, router, http.MethodDelete, "/api/v1/instances/demo-db", noBody, withAuth)
 
@@ -329,7 +349,7 @@ func TestDeleteInstance(t *testing.T) {
 // the response no-store, since the body contains a password.
 func TestConnection(t *testing.T) {
 	service := &fakeService{
-		connectionFn: func(_ context.Context, _ string) (models.ConnectionData, error) {
+		connectionFn: func(_ context.Context, _, _ string) (models.ConnectionData, error) {
 			return models.ConnectionData{
 				Host:     "demo-db-rw",
 				Port:     5432,
@@ -340,7 +360,7 @@ func TestConnection(t *testing.T) {
 		},
 	}
 
-	router := newTestRouter(service)
+	router := newTestRouter(t, service)
 
 	response := performRequest(t, router, http.MethodGet, "/api/v1/instances/demo-db/connection", noBody, withAuth)
 
@@ -357,4 +377,219 @@ func TestConnection(t *testing.T) {
 	if connection.Username != "demoowner" {
 		t.Fatalf("expected demoowner, got %s", connection.Username)
 	}
+}
+
+// performRequestWithToken runs one request signed by a specific caller, so a
+// test can act as an ordinary user instead of the administrator.
+func performRequestWithToken(
+	t *testing.T,
+	router http.Handler,
+	method, path, token string,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	request := httptest.NewRequest(method, path, nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	return response
+}
+
+// registerBody builds a registration payload.
+func registerBody(username, password string) string {
+	return `{"username":"` + username + `","password":"` + password + `"}`
+}
+
+// TestRegister: a new account is created and can immediately sign in.
+func TestRegister(t *testing.T) {
+	router := newTestRouter(t, &fakeService{})
+
+	body := registerBody("alice", "alice-password")
+
+	response := performRequest(t, router, http.MethodPost, "/api/v1/register", body, withoutAuth)
+
+	requireStatus(t, response, http.StatusCreated)
+
+	response = performRequest(t, router, http.MethodPost, "/api/v1/login", body, withoutAuth)
+
+	requireStatus(t, response, http.StatusOK)
+
+	var result struct {
+		Token string `json:"token"`
+	}
+
+	decodeBody(t, response, &result)
+
+	if result.Token == "" {
+		t.Fatal("expected a token for the registered user")
+	}
+}
+
+// TestRegisterRejectsDuplicate: the second attempt at a taken username fails.
+func TestRegisterRejectsDuplicate(t *testing.T) {
+	router := newTestRouter(t, &fakeService{})
+
+	body := registerBody("bob", "bob-password")
+
+	requireStatus(
+		t,
+		performRequest(t, router, http.MethodPost, "/api/v1/register", body, withoutAuth),
+		http.StatusCreated,
+	)
+
+	requireStatus(
+		t,
+		performRequest(t, router, http.MethodPost, "/api/v1/register", body, withoutAuth),
+		http.StatusConflict,
+	)
+}
+
+// TestRegisterRejectsInvalidInput: usernames must be label-safe, passwords
+// long enough, and the administrator name is reserved. Mixed case is not an
+// error: the handler lowercases the username before storing it.
+func TestRegisterRejectsInvalidInput(t *testing.T) {
+	router := newTestRouter(t, &fakeService{})
+
+	cases := map[string]string{
+		"illegal character": registerBody("al_ice", "alice-password"),
+		"short username":    registerBody("al", "alice-password"),
+		"short password":    registerBody("alice", "short"),
+		"reserved username": registerBody(testUsername, "alice-password"),
+	}
+
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			response := performRequest(t, router, http.MethodPost, "/api/v1/register", body, withoutAuth)
+
+			requireStatus(t, response, http.StatusBadRequest)
+		})
+	}
+}
+
+// TestLoginRejectsUnknownUser: credentials that were never registered fail.
+func TestLoginRejectsUnknownUser(t *testing.T) {
+	router := newTestRouter(t, &fakeService{})
+
+	body := registerBody("nobody", "nobody-password")
+
+	response := performRequest(t, router, http.MethodPost, "/api/v1/login", body, withoutAuth)
+
+	requireStatus(t, response, http.StatusUnauthorized)
+}
+
+// TestOwnerScope: an ordinary user's requests are limited to their own
+// instances, while the administrator sees every instance.
+func TestOwnerScope(t *testing.T) {
+	var listedOwner, createdOwner, deletedOwner, connectionOwner string
+
+	service := &fakeService{
+		listFn: func(_ context.Context, owner string) ([]models.Instance, error) {
+			listedOwner = owner
+
+			return []models.Instance{}, nil
+		},
+
+		createFn: func(_ context.Context, request models.CreateInstanceRequest, owner string) (models.Instance, error) {
+			createdOwner = owner
+
+			return models.Instance{Name: request.Name}, nil
+		},
+
+		deleteFn: func(_ context.Context, _, owner string) error {
+			deletedOwner = owner
+
+			return nil
+		},
+
+		connectionFn: func(_ context.Context, _, owner string) (models.ConnectionData, error) {
+			connectionOwner = owner
+
+			return models.ConnectionData{}, nil
+		},
+	}
+
+	router := newTestRouter(t, service)
+
+	userToken := signedTokenFor(t, "alice", roleUser)
+
+	requireStatus(
+		t,
+		performRequestWithToken(t, router, http.MethodGet, "/api/v1/instances", userToken),
+		http.StatusOK,
+	)
+
+	if listedOwner != "alice" {
+		t.Fatalf("expected list scoped to alice, got %q", listedOwner)
+	}
+
+	requireStatus(
+		t,
+		performRequestWithToken(t, router, http.MethodDelete, "/api/v1/instances/demo-db", userToken),
+		http.StatusAccepted,
+	)
+
+	if deletedOwner != "alice" {
+		t.Fatalf("expected delete scoped to alice, got %q", deletedOwner)
+	}
+
+	requireStatus(
+		t,
+		performRequestWithToken(t, router, http.MethodGet, "/api/v1/instances/demo-db/connection", userToken),
+		http.StatusOK,
+	)
+
+	if connectionOwner != "alice" {
+		t.Fatalf("expected connection scoped to alice, got %q", connectionOwner)
+	}
+
+	// A created instance is labelled with its owner.
+	body := `{"name":"demo-db","instances":1}`
+
+	requireStatus(
+		t,
+		performRequestWithToken(t, router, http.MethodPost, "/api/v1/instances", userToken),
+		http.StatusBadRequest,
+	)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/instances", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+userToken)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	requireStatus(t, response, http.StatusAccepted)
+
+	if createdOwner != "alice" {
+		t.Fatalf("expected create scoped to alice, got %q", createdOwner)
+	}
+
+	// The administrator has no scope, which means every instance.
+	requireStatus(
+		t,
+		performRequest(t, router, http.MethodGet, "/api/v1/instances", noBody, withAuth),
+		http.StatusOK,
+	)
+
+	if listedOwner != "" {
+		t.Fatalf("expected an unscoped admin list, got %q", listedOwner)
+	}
+}
+
+// TestAuthenticationRejectsTokenWithoutSubject: a non-admin token with no
+// subject has no owner scope and must not fall back to seeing everything.
+func TestAuthenticationRejectsTokenWithoutSubject(t *testing.T) {
+	router := newTestRouter(t, &fakeService{})
+
+	response := performRequestWithToken(
+		t,
+		router,
+		http.MethodGet,
+		"/api/v1/instances",
+		signedTokenFor(t, "", roleUser),
+	)
+
+	requireStatus(t, response, http.StatusUnauthorized)
 }

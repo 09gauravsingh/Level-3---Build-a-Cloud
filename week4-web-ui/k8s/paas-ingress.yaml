@@ -1,4 +1,5 @@
 #Ingress rules are mentioned here:
+#TLS certificate mentioned here
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress

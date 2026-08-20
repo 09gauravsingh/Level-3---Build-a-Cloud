@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"codeberg.org/gauravsingh78945/build-a-cloud/week3-paas-api/internal/models"
@@ -28,18 +29,40 @@ func (api *API) login(c *gin.Context) {
 		return
 	}
 
-	//Check Credentials:
-	if request.Username != os.Getenv("ADMIN_USERNAME") || request.Password != os.Getenv("ADMIN_PASSWORD") {
-		c.JSON(401, gin.H{"error": "Invalid Credentials"})
-		return
+	//Check login Credentials: the environment admin first, then
+	//the registered users stored in SQLite.
+	username := request.Username
+	role := roleAdmin
+
+	isEnvAdmin := request.Username == os.Getenv("ADMIN_USERNAME") &&
+		request.Password == os.Getenv("ADMIN_PASSWORD")
+
+	if !isEnvAdmin {
+		username = strings.ToLower(strings.TrimSpace(request.Username))
+		role = roleUser
+
+		if !api.users.Authenticate(username, request.Password) {
+
+			//Record failed login attempt.
+			audit(
+				username,
+				"auth.login",
+				"",
+				"failed",
+			)
+			c.JSON(401, gin.H{"error": "Invalid Credentials"})
+			return
+		}
 	}
 
 	//JWT valid for one hour
 	claims := jwt.MapClaims{
-		"sub": request.Username,
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"sub":  username,
+		"role": role,
+		"exp":  time.Now().Add(time.Hour).Unix(),
 	}
 
+	//Create JWT using HS256
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	//Sign JWT using our secret.
@@ -48,6 +71,14 @@ func (api *API) login(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "could not create token"})
 		return
 	}
+
+	//Record successful login.
+	audit(
+		username,
+		"auth.login",
+		"",
+		"success",
+	)
 
 	c.JSON(200, gin.H{"token": signedToken})
 }
@@ -83,15 +114,36 @@ func (api *API) CreateInstance(c *gin.Context) {
 		return
 	}
 
+	//get the logged-in user from JWT context.
+	username := c.GetString("username")
+
 	// Ask Kubernetes to create the PostgreSQL instance.
 	instance, err := api.service.Create(
 		c.Request.Context(),
 		request,
+		api.ownerScope(c),
 	)
+
 	if err != nil {
+		//Record failed creation.
+		audit(
+			username,
+			"instance.create",
+			request.Name,
+			"failed",
+		)
+
 		api.ServiceError(c, err)
 		return
 	}
+
+	//Record successful creation.
+	audit(
+		username,
+		"instance.create",
+		instance.Name,
+		"success",
+	)
 
 	// CloudNativePG continues provisioning asynchronously.
 	c.Header(
@@ -106,6 +158,7 @@ func (api *API) CreateInstance(c *gin.Context) {
 func (api *API) ListInstances(c *gin.Context) {
 	instances, err := api.service.List(
 		c.Request.Context(),
+		api.ownerScope(c),
 	)
 	if err != nil {
 		api.ServiceError(c, err)
@@ -122,14 +175,34 @@ func (api *API) ListInstances(c *gin.Context) {
 func (api *API) DeleteInstance(c *gin.Context) {
 	name := c.Param("name")
 
-	if err := api.service.Delete(
+	//get the logged-in user from JWT context.
+	username := c.GetString("username")
+
+	err := api.service.Delete(
 		c.Request.Context(),
 		name,
-	); err != nil {
+		api.ownerScope(c),
+	)
+
+	if err != nil {
+		// Record failed deletion attempt.
+		audit(
+			username,
+			"instance.delete",
+			name,
+			"failed",
+		)
 		api.ServiceError(c, err)
 		return
 	}
 
+	//Record successful deletion request.
+	audit(
+		username,
+		"instance.delete",
+		name,
+		"success",
+	)
 	// Kubernetes performs the actual cleanup asynchronously.
 	c.JSON(http.StatusAccepted, models.OperationResponse{
 		Name:   name,
@@ -139,14 +212,37 @@ func (api *API) DeleteInstance(c *gin.Context) {
 
 // GetConnection returns data from the CloudNativePG Secret.
 func (api *API) GetConnection(c *gin.Context) {
+	name := c.Param("name")
+
+	//Get the logged-in user from JWT context.
+	username := c.GetString("username")
+
 	connection, err := api.service.Connection(
 		c.Request.Context(),
-		c.Param("name"),
+		name,
+		api.ownerScope(c),
 	)
+
 	if err != nil {
+		//Record failed credential-access attempt.
+		audit(
+			username,
+			"connection.read",
+			name,
+			"failed",
+		)
+
 		api.ServiceError(c, err)
 		return
 	}
+
+	//Record that this user accused connection credentials.
+	audit(
+		username,
+		"connection.read",
+		name,
+		"success",
+	)
 
 	// Prevent browsers and proxies from caching credentials.
 	c.Header("Cache-Control", "no-store")

@@ -1,83 +1,83 @@
 # Week 3 – PaaS API Layer
 
-A Go REST API for provisioning and managing CloudNativePG PostgreSQL instances in STACKIT SKE.
+A Go REST API for provisioning and managing CloudNativePG PostgreSQL
+instances in STACKIT SKE. It is the control plane for the product: people
+register or sign in, receive a JWT, and then create, list, connect to and
+delete PostgreSQL clusters. CloudNativePG still does the actual
+provisioning.
 
-## Local commands
+How those calls move through the rest of the platform is in
+[../architecture.md](../architecture.md).
 
-Every long command is wrapped in the `Makefile`. Run `make` to list them all.
+## What the API does
+
+- `POST /api/v1/register` — create a SQLite account (bcrypt password).
+  Usernames must be Kubernetes-label safe (3–32 lowercase letters, numbers
+  or hyphens). The environment admin name is reserved.
+- `POST /api/v1/login` — environment admin or a registered user. Returns a
+  one-hour HS256 JWT with `sub` and `role` (`admin` or `user`).
+- `POST/GET/DELETE /api/v1/instances` and
+  `GET /api/v1/instances/:name/connection` — require `Authorization: Bearer`.
+  Ordinary users only see clusters labelled `platform.level3.io/owner` with
+  their username. The admin sees every API-managed cluster. A name that
+  belongs to someone else is returned as `404`, not `403`.
+- `GET /healthz` and `GET /metrics` — public probes.
+
+Instance names are unique in `database-services`. A second create of the
+same name returns `409 Conflict`.
+
+## Environment
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `ADMIN_USERNAME` | yes | — | Superuser login |
+| `ADMIN_PASSWORD` | yes | — | Superuser password |
+| `JWT_SECRET` | yes | — | HS256 signing key |
+| `PAAS_NAMESPACE` | no | `database-services` | Where Clusters are created |
+| `PORT` | no | `8080` | Listen address |
+| `USER_DB_PATH` | no | `./users.db` | SQLite file (`/data/users.db` in the cluster) |
+| `KUBECONFIG` | local only | default kubeconfig | Cluster access outside SKE |
+
+Permanent local values live in `.env.secrets` and are never committed.
+In the cluster the SQLite file sits on a PVC because the container root
+filesystem is read-only. The Deployment uses `replicas: 1` and
+`strategy: Recreate` so two Pods never share that `ReadWriteOnce` volume.
+
+## Commands
+
+Run `make` to list them. Secrets come from `.env.secrets` (never committed)
+or from the command line, for example `make run PORT=9090`.
 
 | Command | Purpose |
 | --- | --- |
-| `make run` | Start the server with KUBECONFIG, JWT/login secrets, PAAS_NAMESPACE and PORT already set |
-| `make stop` | Kill whatever still listens on port 8080 |
-| `make restart` | Free the port and start the server again |
-| `make check` | Tidy, format, vet and test before a commit |
-| `make unit-test` | Run only the REST API unit tests, with full output |
-| `make health` | Call `/healthz` |
-| `make create` | Create an instance, for example `make create NAME=my-db` |
-| `make list` | List all instances |
-| `make connection` | Show the credentials of one instance |
-| `make delete` | Delete one instance |
-| `make clusters` | Show the CloudNativePG clusters with kubectl |
+| `make run` | Start the server locally |
+| `make stop` | Free port 8080 |
+| `make test` | Run unit tests |
+| `make vet` | Run `go vet ./...` |
 | `make kube-refresh` | Write a fresh login kubeconfig with the STACKIT CLI |
-| `make kube-context` | Show which cluster and user kubectl would use |
-| `make docs` | Validate the contract and open Swagger Editor |
-| `make docker-build` | Build the container image |
-
-Values may be overridden per command, for example `make run PORT=9090`.
-Permanent values, including `API_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
-and `JWT_SECRET`, live in `.env.secrets`.
-That file stays on your machine and is never committed.
-
-`eval "$(make load)"` puts `KUBECONFIG`, auth secrets, `PAAS_NAMESPACE` and
-`PORT` into the current shell, so plain `kubectl` / `go run` works afterwards.
-A make recipe runs in a child shell and cannot export into its caller, which
-is why the exports are evaluated rather than set.
-
-## Cluster commands
-
-These act on the deployment running in SKE, in namespace `paas-system`.
-
-| Command | Purpose |
-| --- | --- |
-| `make preflight` | Check every prerequisite in one go: session, namespaces, CloudNativePG, both Secrets, Deployment, endpoint, RBAC and manifest drift |
-| `make deploy` | Apply `deploy/01-rbac.yaml` and `deploy/02-api.yaml`, then wait for the new Pod |
-| `make deploy-diff` | Show what `make deploy` would change, without changing it |
-| `make rollout` | Restart the Pods and wait for them |
-| `make status` | Deployment, Pods and Service in one view |
-| `make image` | The image the running Pod was started from |
+| `make deploy` | Apply the manifests and wait for the Pod |
+| `make status` | Deployment, Pods and Service |
 | `make logs` | Follow the Pod logs |
-| `make describe` | Describe the Pod, including its events |
-| `make events` | Recent events of the namespace |
 | `make forward` | Tunnel `localhost:8080` to the Service |
-| `make cluster-token` | Print the token from the `week3-paas-api-auth` Secret |
+| `make connect-prometheus` | Tunnel `localhost:9090` to Prometheus |
+| `make connect-grafana` | Tunnel `localhost:3000` to Grafana |
+| `make publish` | Build, push and roll out `API_IMAGE` |
 
-### Talking to the Pod
-
-The Pod reads its bearer token from a Kubernetes Secret, so it differs from
-the local one in `.env.secrets`. Add `REMOTE=1` and the curl helpers use the
-cluster token instead:
+Publish a new image (always override the tag):
 
 ```bash
-make forward             # first terminal, keeps the tunnel open
-make list REMOTE=1       # second terminal
-make create REMOTE=1 NAME=demo-db
+make publish API_IMAGE=registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.3
 ```
 
-Without `REMOTE=1` the same commands reach a locally running `make run`.
-The tunnel and the local server share port 8080, so only one may run at a
-time; `make stop` frees the port for either.
-
-To use plain `curl` instead of the helpers, put the token of the Pod into
-the shell once:
+`make forward` and `make run` share port 8080; `make stop` frees it.
 
 ```bash
-eval "$(make load-remote)"
-curl -sS localhost:8080/api/v1/instances -H "Authorization: Bearer $API_TOKEN"
+make forward
+TOKEN=$(curl -sS -X POST localhost:8080/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"week4-password"}' | jq -r .token)
+curl -sS localhost:8080/api/v1/instances -H "Authorization: Bearer $TOKEN"
 ```
-
-`make load-remote` is `make load` with the token taken from the Secret
-rather than from `.env.secrets`; `make cluster-token` prints it on its own.
 
 ## Cluster access
 
@@ -92,70 +92,61 @@ That file holds no credentials. Every call asks the STACKIT CLI for a fresh
 token, so the kubeconfig does not expire, but you must stay logged in with
 `stackit auth login`. `make kube-refresh` writes the file again.
 
-The container is the one exception. The STACKIT CLI does not exist inside the
-image, so `make docker-run` first writes a separate one-hour kubeconfig with
-embedded credentials to `bin/docker-kubeconfig.yaml` and mounts that instead.
-`make clean` removes it.
-
 Inside SKE the API uses no kubeconfig at all: it authenticates with the
 ServiceAccount token of its own Pod, using the permissions in
 `deploy/01-rbac.yaml`.
 
-## Planned capabilities
+## Files
 
-- Create PostgreSQL instances
-- List PostgreSQL instances
-- Retrieve instance status
-- Delete PostgreSQL instances
-- Retrieve connection data
-- OpenAPI documentation
-- Unit tests
-- Docker image
-- Deployment to STACKIT SKE
-
-
-Responsibility of each files:
-
+```
 cmd/api/main.go
-→ reads environment variables
-→ creates the Kubernetes service
-→ calls apihttp.NewRouter(...)
-→ starts and stops the HTTP server
-
+  reads environment variables
+  opens the Kubernetes client and the SQLite user store
+  calls apihttp.NewRouter(service, logger, users)
+  starts and stops the HTTP server
 
 internal/api/routes.go
-→ creates the Gin router
-→ adds middleware
-→ registers REST routes
+  Gin router, CORS, metrics middleware
+  public routes: /healthz, /metrics, /api/v1/login, /api/v1/register
+  protected /api/v1/instances* group
 
+internal/api/auth.go
+  register handler, username/password rules, ownerScope helper
+
+internal/api/users.go
+  SQLite UserStore: CreateUser (bcrypt) and Authenticate
 
 internal/api/handlers.go
-→ implements Create, List, Delete, Connection and Health handlers
-
-
-internal/api/handlers_test.go
-→ unit tests for the routes, run with make unit-test
-→ replaces Kubernetes with a fake service, so no cluster is needed
-
+  login (admin env, then SQLite) plus Create, List, Delete, Connection, Health
 
 internal/api/middleware.go
-→ bearer-token authentication
-→ conversion of platform errors into HTTP responses
+  JWT verification, username/isAdmin on the gin context
+  Kubernetes errors → HTTP status
 
+internal/api/metrics.go
+  total_http_requests and http_request_duration_seconds
+
+internal/api/handlers_test.go
+  route and auth tests against a fake PlatformService and a temp SQLite file
 
 internal/models/
-→ request and response structs
-
+  request and response structs, including ownedBy on Instance
 
 internal/platform/kubernetes_client.go
-→ creates Kubernetes clients
-→ uses kubeconfig locally or ServiceAccount inside SKE
-
+  dynamic + core clients; kubeconfig locally, ServiceAccount in SKE
+  label constants managed-by and owner
 
 internal/platform/kubernetes_instances.go
-→ creates, lists and deletes CloudNativePG Cluster resources
-→ reads connection credentials from Kubernetes Secrets
-
+  create / list / delete Cluster resources
+  list and getManagedCluster filter by owner when the scope is non-empty
+  connection credentials from the <name>-app Secret
 
 api/openapi.yaml
-→ official OpenAPI contract displayed through Swagger
+  official OpenAPI contract
+
+deploy/01-rbac.yaml
+  paas-system namespace, ServiceAccount, Role in database-services
+
+deploy/02-api.yaml
+  PVC for SQLite, Deployment, Service
+```

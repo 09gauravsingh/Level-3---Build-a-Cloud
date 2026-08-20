@@ -4,8 +4,6 @@
 // Delete
 // Connection data and read secrets from the Kubernetes cluster.
 
-
-
 package platform
 
 import (
@@ -21,10 +19,20 @@ import (
 )
 
 // Create creates one CloudNativePG Cluster resource.
+// An empty owner leaves the cluster unowned, which only an administrator can do.
 func (s *KubeService) Create(
 	ctx context.Context,
 	request models.CreateInstanceRequest,
+	owner string,
 ) (models.Instance, error) {
+	labels := map[string]any{
+		managedByLabel: managedByValue,
+	}
+
+	if owner != "" {
+		labels[ownerLabel] = owner
+	}
+
 	cluster := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "postgresql.cnpg.io/v1",
@@ -33,9 +41,7 @@ func (s *KubeService) Create(
 			"metadata": map[string]any{
 				"name":      request.Name,
 				"namespace": s.namespace,
-				"labels": map[string]any{
-					managedByLabel: managedByValue,
-				},
+				"labels":    labels,
 			},
 
 			"spec": map[string]any{
@@ -68,13 +74,21 @@ func (s *KubeService) Create(
 }
 
 // List returns only PostgreSQL instances created by this API.
+// A non-empty owner narrows the result to that user's instances.
 func (s *KubeService) List(
 	ctx context.Context,
+	owner string,
 ) ([]models.Instance, error) {
+	selector := managedByLabel + "=" + managedByValue
+
+	if owner != "" {
+		selector += "," + ownerLabel + "=" + owner
+	}
+
 	list, err := s.clusters.List(
 		ctx,
 		metav1.ListOptions{
-			LabelSelector: managedByLabel + "=" + managedByValue,
+			LabelSelector: selector,
 		},
 	)
 	if err != nil {
@@ -97,9 +111,10 @@ func (s *KubeService) List(
 func (s *KubeService) Delete(
 	ctx context.Context,
 	name string,
+	owner string,
 ) error {
-	// First verify that this instance belongs to our API.
-	if _, err := s.getManagedCluster(ctx, name); err != nil {
+	// First verify that this instance belongs to our API and to the caller.
+	if _, err := s.getManagedCluster(ctx, name, owner); err != nil {
 		return err
 	}
 
@@ -114,9 +129,10 @@ func (s *KubeService) Delete(
 func (s *KubeService) Connection(
 	ctx context.Context,
 	name string,
+	owner string,
 ) (models.ConnectionData, error) {
 	// Prevent access to manually created PostgreSQL clusters.
-	if _, err := s.getManagedCluster(ctx, name); err != nil {
+	if _, err := s.getManagedCluster(ctx, name, owner); err != nil {
 		return models.ConnectionData{}, err
 	}
 
@@ -147,10 +163,14 @@ func (s *KubeService) Connection(
 	}, nil
 }
 
-// getManagedCluster verifies that a cluster was created by our API.
+// getManagedCluster verifies that a cluster was created by our API and,
+// when an owner is given, that it belongs to that user. Another user's
+// cluster is reported as missing rather than forbidden, so the API never
+// reveals that the name exists.
 func (s *KubeService) getManagedCluster(
 	ctx context.Context,
 	name string,
+	owner string,
 ) (*unstructured.Unstructured, error) {
 	cluster, err := s.clusters.Get(
 		ctx,
@@ -161,7 +181,16 @@ func (s *KubeService) getManagedCluster(
 		return nil, err
 	}
 
-	if cluster.GetLabels()[managedByLabel] != managedByValue {
+	labels := cluster.GetLabels()
+
+	if labels[managedByLabel] != managedByValue {
+		return nil, apierrors.NewNotFound(
+			clusterGVR.GroupResource(),
+			name,
+		)
+	}
+
+	if owner != "" && labels[ownerLabel] != owner {
 		return nil, apierrors.NewNotFound(
 			clusterGVR.GroupResource(),
 			name,
@@ -236,6 +265,7 @@ func toInstance(
 	return models.Instance{
 		Name:             cluster.GetName(),
 		Namespace:        cluster.GetNamespace(),
+		OwnedBy:          cluster.GetLabels()[ownerLabel],
 		Status:           status,
 		DesiredInstances: desired,
 		ReadyInstances:   ready,

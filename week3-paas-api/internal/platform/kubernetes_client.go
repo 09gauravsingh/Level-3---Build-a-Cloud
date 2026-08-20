@@ -17,6 +17,9 @@ const (
 	// This label identifies PostgreSQL clusters created by our API.
 	managedByLabel = "platform.level3.io/managed-by"
 	managedByValue = "week3-paas-api"
+
+	// This label records which platform user owns a cluster.
+	ownerLabel = "platform.level3.io/owner"
 )
 
 // clusterGVR identifies the CloudNativePG Cluster resource.

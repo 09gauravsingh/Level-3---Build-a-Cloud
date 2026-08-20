@@ -19,13 +19,15 @@ import (
 func (api *API) Authenticate(c *gin.Context) {
 	auth := c.GetHeader("Authorization")
 
-	//Header must be: Bearer <JWT Token>
+	// Header must look like:
+	// Authorization: Bearer <JWT>
 	if !strings.HasPrefix(auth, "Bearer ") {
 		c.JSON(401, gin.H{"error": "missing bearer token"})
 		c.Abort()
 		return
 	}
 
+	// Remove "Bearer " and keep only the JWT.
 	tokenString := strings.TrimPrefix(auth, "Bearer ")
 
 	//verify signature and expiration
@@ -42,6 +44,23 @@ func (api *API) Authenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
+	//Remember who is calling so handlers can scope data to one user.
+	claims, _ := token.Claims.(jwt.MapClaims)
+
+	subject, _ := claims["sub"].(string)
+	isAdmin := claims["role"] == roleAdmin
+
+	//A non-admin without a subject has no owner scope of its own and
+	//would otherwise be able to read every instance.
+	if !isAdmin && subject == "" {
+		c.JSON(401, gin.H{"error": "Invalid or expired token"})
+		c.Abort()
+		return
+	}
+
+	c.Set(contextUsername, subject)
+	c.Set(contextIsAdmin, isAdmin)
 
 	//JWT is valid --> continue to Handler(or allow access).
 	c.Next()

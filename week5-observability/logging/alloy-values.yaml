@@ -1,0 +1,17 @@
+#Create small Alloy Helm values, it's only responsibility is Log collection.
+#I have two Alloy Pods because Alloy is running as a 
+#DaemonSet and your cluster has two worker nodes.(DaemonSet is a Kubernetes object that makes sure a Pod runs on every node (or every selected node) in the cluster.)
+
+# Run one Alloy Pod on every worker node.
+controller:
+  type: daemonset
+  replicas: 1
+
+alloy:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -56,6 +56,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Registered users live in a SQLite file next to the API.
+	dbPath := envOrDefault("USER_DB_PATH", "./users.db")
+
+	users, err := apihttp.NewUserStore(dbPath)
+	if err != nil {
+		logger.Error(
+			"failed to open user database",
+			"error",
+			err,
+		)
+		os.Exit(1)
+	}
+
 	// Configure HTTP server.
 	server := &http.Server{
 		Addr: ":" + port,
@@ -63,6 +76,7 @@ func main() {
 		Handler: apihttp.NewRouter(
 			service,
 			logger,
+			users,
 		),
 
 		ReadHeaderTimeout: 5 * time.Second,

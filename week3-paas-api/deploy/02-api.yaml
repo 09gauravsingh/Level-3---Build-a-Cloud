@@ -1,8 +1,8 @@
-# This YAML file creates two Kubernetes objects:
-# Why are we creating two objects?
+# This YAML file creates three Kubernetes objects:
+# PersistentVolumeClaim
+# → holds the SQLite file of registered users
 # Deployment
 # → creates and maintains the API Pod(it runs the GO API server)
-
 # Service
 # → provides a stable network address for the Pod
 
@@ -11,6 +11,24 @@
 
 
 
+# Holds the SQLite file with the registered users, so accounts survive
+# a Pod restart or a new image rollout.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: week3-paas-api-users
+  namespace: paas-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  storageClassName: premium-perf1-stackit
+
+  resources:
+    requests:
+      storage: 1Gi
+
+---
 # Runs the Go API as a Kubernetes workload.
 apiVersion: apps/v1
 kind: Deployment
@@ -19,6 +37,11 @@ metadata:
   namespace: paas-system
 spec:
   replicas: 1
+
+  # SQLite on a ReadWriteOnce volume cannot be shared by two Pods, so the old
+  # Pod must be gone before the new one starts.
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -36,13 +59,19 @@ spec:
       imagePullSecrets:
         - name: stackit-registry
 
+      # Alpine's non-root "app" user is UID/GID 100. fsGroup lets that
+      # user write the SQLite file on the mounted volume. runAsUser must
+      # be numeric so kubelet can honour runAsNonRoot.
       securityContext:
+        runAsUser: 100
+        runAsGroup: 100
+        fsGroup: 100
         seccompProfile:
           type: RuntimeDefault
 
       containers:
         - name: api
-          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.0.0
+          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.10
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -50,12 +79,23 @@ spec:
               containerPort: 8080
 
           env:
-            # Protect the REST endpoints with the Kubernetes Secret.
-            - name: API_TOKEN
+            - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: week3-paas-api-auth
-                  key: API_TOKEN
+                  key: ADMIN_USERNAME
+
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: week3-paas-api-auth
+                  key: ADMIN_PASSWORD
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: week3-paas-api-auth
+                  key: JWT_SECRET
 
             # PostgreSQL resources are managed in this namespace.
             - name: PAAS_NAMESPACE
@@ -63,6 +103,17 @@ spec:
 
             - name: PORT
               value: "8080"
+
+            - name: USER_DB_PATH
+              value: /data/users.db
+
+            # Internal Loki address used by the API to retrieve logs.
+            - name: LOKI_URL
+              value: "http://loki-gateway.logging.svc.cluster.local"
+
+          volumeMounts:
+            - name: users-db
+              mountPath: /data
 
           # Kubernetes checks whether the process is alive.
           livenessProbe:
@@ -95,6 +146,11 @@ spec:
             capabilities:
               drop:
                 - ALL
+
+      volumes:
+        - name: users-db
+          persistentVolumeClaim:
+            claimName: week3-paas-api-users
 
 ---
 # Provides a stable internal address for the API Pods.

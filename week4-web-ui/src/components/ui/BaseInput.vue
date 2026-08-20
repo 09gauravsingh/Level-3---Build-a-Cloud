@@ -26,8 +26,9 @@ function onInput(event) {
 
 <template>
   <div class="space-y-1.5">
-    <label :for="id" class="block text-xs font-medium tracking-wide text-slate-400 uppercase">
+    <label :for="id" class="block text-sm font-medium text-slate-700">
       {{ label }}
+      <span v-if="required" class="text-indigo-500">*</span>
     </label>
 
     <input
@@ -41,12 +42,12 @@ function onInput(event) {
       :required="required"
       :aria-invalid="Boolean(error)"
       :aria-describedby="hint || error ? `${id}-help` : undefined"
-      class="w-full rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2.5 text-sm text-slate-100 transition placeholder:text-slate-600 focus:border-sky-400/60 focus:ring-2 focus:ring-sky-500/25 focus:outline-none"
-      :class="error ? 'border-rose-500/60 focus:border-rose-500/60 focus:ring-rose-500/25' : ''"
+      class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none"
+      :class="error ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/10' : ''"
       @input="onInput"
     >
 
-    <p v-if="error" :id="`${id}-help`" class="text-xs text-rose-400">{{ error }}</p>
+    <p v-if="error" :id="`${id}-help`" class="text-xs font-medium text-rose-600">{{ error }}</p>
     <p v-else-if="hint" :id="`${id}-help`" class="text-xs text-slate-500">{{ hint }}</p>
   </div>
 </template>

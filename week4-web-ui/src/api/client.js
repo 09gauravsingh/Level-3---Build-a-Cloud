@@ -37,6 +37,13 @@ async function readErrorMessage(response, fallback) {
   }
 }
 
+export async function getAuditLogs(name, token) {
+  return request(`/api/v1/instances/${encodeURIComponent(name)}/audit`, {
+    token,
+    errorMessage: 'Failed to load audit logs',
+  })
+}
+
 async function request(path, { method = 'GET', token = '', body, errorMessage } = {}) {
   const headers = {}
 
@@ -82,6 +89,15 @@ export const api = {
     return data.token
   },
 
+  // POST /api/v1/register -> 201 { username }
+  register(username, password) {
+    return request('/api/v1/register', {
+      method: 'POST',
+      body: { username, password },
+      errorMessage: 'Could not create account',
+    })
+  },
+
   // GET /api/v1/instances -> models.InstanceList { items, count }
   async listInstances(token) {
     const data = await request('/api/v1/instances', {
@@ -116,6 +132,13 @@ export const api = {
     return request(`/api/v1/instances/${encodeURIComponent(name)}/connection`, {
       token,
       errorMessage: 'Could not get connection data',
+    })
+  },
+
+  getInstanceLogs(token, name) {
+    return request(`/api/v1/instances/${encodeURIComponent(name)}/logs`, {
+      token,
+      errorMessage: 'Could not get instance logs',
     })
   },
 }
