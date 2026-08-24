@@ -38,8 +38,8 @@ function confirm() {
       </p>
     </div>
 
-    <p class="mt-4 text-sm text-slate-600">
-      Type <span class="font-mono font-semibold text-slate-900">{{ instanceName }}</span> to
+    <p class="mt-4 text-sm text-neutral-600">
+      Type <span class="font-mono font-semibold text-neutral-900">{{ instanceName }}</span> to
       confirm.
     </p>
 
@@ -48,7 +48,7 @@ function confirm() {
       type="text"
       :placeholder="instanceName"
       aria-label="Confirm instance name"
-      class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 focus:outline-none"
+      class="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 font-mono text-sm text-neutral-900 shadow-sm transition placeholder:text-neutral-400 hover:border-neutral-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 focus:outline-none"
       @keyup.enter="confirm"
     >
 

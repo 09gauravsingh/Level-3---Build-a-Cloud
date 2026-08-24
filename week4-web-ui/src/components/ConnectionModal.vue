@@ -51,17 +51,17 @@ async function copy(field) {
     :subtitle="instanceName"
     @close="emit('close')"
   >
-    <div class="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+    <div class="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200">
       <div
         v-for="field in fields"
         :key="field.key"
-        class="flex items-center gap-3 bg-white px-3 py-2.5 transition hover:bg-slate-50"
+        class="flex items-center gap-3 bg-white px-3 py-2.5 transition hover:bg-neutral-50"
       >
-        <span class="w-24 shrink-0 text-[11px] font-medium tracking-wide text-slate-400 uppercase">
+        <span class="w-24 shrink-0 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
           {{ field.label }}
         </span>
 
-        <span class="min-w-0 flex-1 truncate font-mono text-xs text-slate-800" :title="field.value">
+        <span class="min-w-0 flex-1 truncate font-mono text-xs text-neutral-800" :title="field.value">
           {{ display(field) }}
         </span>
 
@@ -70,7 +70,7 @@ async function copy(field) {
           :class="
             copiedField === field.key
               ? 'bg-emerald-50 text-emerald-600'
-              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+              : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900'
           "
           :disabled="!field.value"
           @click="copy(field)"

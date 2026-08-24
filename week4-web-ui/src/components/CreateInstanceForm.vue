@@ -99,10 +99,10 @@ defineExpose({ reset })
         />
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-        <p class="flex items-center gap-1.5 text-xs text-slate-500">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4">
+        <p class="flex items-center gap-1.5 text-xs text-neutral-500">
           <svg
-            class="size-3.5 text-slate-400"
+            class="size-3.5 text-neutral-400"
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"

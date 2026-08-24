@@ -82,8 +82,8 @@ const panes = [
   <div class="space-y-6">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Logs</h1>
-        <p class="mt-1 text-sm text-slate-500">
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900">Logs</h1>
+        <p class="mt-1 text-sm text-neutral-500">
           Inspect PostgreSQL output and audit events for one instance.
         </p>
       </div>
@@ -91,11 +91,11 @@ const panes = [
 
     <AppCard title="Query" subtitle="Choose an instance, then switch between log types">
       <template #actions>
-        <label class="flex items-center gap-2 text-xs text-slate-600">
+        <label class="flex items-center gap-2 text-xs text-neutral-600">
           <span>Instance</span>
           <select
             v-model="selected"
-            class="h-8 min-w-44 rounded-lg border border-slate-200 bg-white px-2 font-mono text-xs text-slate-800 shadow-sm outline-none transition hover:border-slate-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+            class="h-8 min-w-44 rounded-lg border border-neutral-200 bg-white px-2 font-mono text-xs text-neutral-800 shadow-sm outline-none transition hover:border-neutral-300 focus:border-neutral-500 focus:ring-4 focus:ring-neutral-500/10"
             aria-label="Select instance for logs"
           >
             <option value="" disabled>Select instance</option>
@@ -116,31 +116,31 @@ const panes = [
         </BaseButton>
       </template>
 
-      <div class="mb-4 flex gap-1 rounded-lg bg-slate-100 p-1">
+      <div class="mb-4 flex gap-1 border-b border-neutral-200">
         <button
           v-for="item in panes"
           :key="item.id"
           type="button"
-          class="flex-1 rounded-md px-3 py-2 text-left transition"
+          class="-mb-px border-b-2 px-3 py-2 text-left transition"
           :class="
             pane === item.id
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'border-neutral-900 text-neutral-900'
+              : 'border-transparent text-neutral-500 hover:text-neutral-800'
           "
           :aria-pressed="pane === item.id"
           @click="pane = item.id"
         >
           <span class="block text-sm font-semibold">{{ item.label }}</span>
-          <span class="mt-0.5 block text-[11px] text-slate-500">{{ item.caption }}</span>
+          <span class="mt-0.5 block text-[11px] text-neutral-500">{{ item.caption }}</span>
         </button>
       </div>
 
       <div
         v-if="!selectedName"
-        class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-16 text-center"
+        class="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-16 text-center"
       >
-        <p class="text-sm font-medium text-slate-800">Select an instance to load logs</p>
-        <p class="mt-1 text-xs text-slate-500">
+        <p class="text-sm font-medium text-neutral-800">Select an instance to load logs</p>
+        <p class="mt-1 text-xs text-neutral-500">
           Instance logs and audit logs are queried from Loki for the last hour.
         </p>
       </div>
@@ -148,32 +148,32 @@ const panes = [
       <template v-else-if="pane === 'instance'">
         <div
           v-if="loading && instanceLogs.length === 0"
-          class="h-64 animate-pulse rounded-xl bg-slate-100"
+          class="h-64 animate-pulse rounded-xl bg-neutral-100"
         />
 
         <div
           v-else-if="instanceLogs.length === 0"
-          class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500"
+          class="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-16 text-center text-sm text-neutral-500"
         >
           No instance logs found.
         </div>
 
-        <div v-else class="max-h-[32rem] overflow-auto rounded-xl border border-slate-200">
+        <div v-else class="max-h-[32rem] overflow-auto rounded-xl border border-neutral-200">
           <table class="min-w-full text-left">
             <thead
-              class="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] tracking-wide text-slate-500 uppercase"
+              class="sticky top-0 border-b border-neutral-200 bg-neutral-50 text-[11px] tracking-wide text-neutral-500 uppercase"
             >
               <tr>
                 <th class="px-4 py-2.5 font-medium">Time</th>
                 <th class="px-4 py-2.5 font-medium">Message</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
+            <tbody class="divide-y divide-neutral-100 bg-white">
               <tr v-for="(log, index) in instanceLogs" :key="index" class="align-top">
-                <td class="px-4 py-2 font-mono text-xs whitespace-nowrap text-slate-500">
+                <td class="px-4 py-2 font-mono text-xs whitespace-nowrap text-neutral-500">
                   {{ formatTime(log.timestamp) }}
                 </td>
-                <td class="px-4 py-2 font-mono text-xs leading-5 whitespace-pre-wrap text-slate-800">
+                <td class="px-4 py-2 font-mono text-xs leading-5 whitespace-pre-wrap text-neutral-800">
                   {{ displayLine(log) }}
                 </td>
               </tr>
@@ -185,20 +185,20 @@ const panes = [
       <template v-else>
         <div
           v-if="loading && auditEntries.length === 0"
-          class="h-64 animate-pulse rounded-xl bg-slate-100"
+          class="h-64 animate-pulse rounded-xl bg-neutral-100"
         />
 
         <div
           v-else-if="auditEntries.length === 0"
-          class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500"
+          class="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-16 text-center text-sm text-neutral-500"
         >
           No audit logs found.
         </div>
 
-        <div v-else class="max-h-[32rem] overflow-auto rounded-xl border border-slate-200">
+        <div v-else class="max-h-[32rem] overflow-auto rounded-xl border border-neutral-200">
           <table class="min-w-full text-left text-sm">
             <thead
-              class="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] tracking-wide text-slate-500 uppercase"
+              class="sticky top-0 border-b border-neutral-200 bg-neutral-50 text-[11px] tracking-wide text-neutral-500 uppercase"
             >
               <tr>
                 <th class="px-4 py-2.5 font-medium">Time</th>
@@ -207,13 +207,13 @@ const panes = [
                 <th class="px-4 py-2.5 font-medium">Result</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 bg-white">
+            <tbody class="divide-y divide-neutral-100 bg-white">
               <tr v-for="(log, index) in auditEntries" :key="index">
-                <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-slate-600">
+                <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap text-neutral-600">
                   {{ formatTime(log.timestamp) }}
                 </td>
-                <td class="px-4 py-2.5 font-mono text-xs text-slate-800">{{ log.user || '—' }}</td>
-                <td class="px-4 py-2.5 text-slate-800">{{ log.action || '—' }}</td>
+                <td class="px-4 py-2.5 font-mono text-xs text-neutral-800">{{ log.user || '—' }}</td>
+                <td class="px-4 py-2.5 text-neutral-800">{{ log.action || '—' }}</td>
                 <td class="px-4 py-2.5">
                   <span
                     class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -222,7 +222,7 @@ const panes = [
                         ? 'bg-emerald-50 text-emerald-700'
                         : String(log.result).toLowerCase() === 'failed'
                           ? 'bg-rose-50 text-rose-700'
-                          : 'bg-slate-100 text-slate-600'
+                          : 'bg-neutral-100 text-neutral-600'
                     "
                   >
                     {{ log.result || '—' }}

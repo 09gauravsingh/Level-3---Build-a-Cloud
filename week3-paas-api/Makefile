@@ -12,7 +12,7 @@ PORT           ?= 8080
 
 APP            ?= week3-paas-api
 API_NAMESPACE  ?= paas-system
-API_IMAGE      ?= registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.10
+API_IMAGE      ?= registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.11
 
 export KUBECONFIG ADMIN_USERNAME ADMIN_PASSWORD JWT_SECRET PAAS_NAMESPACE PORT
 

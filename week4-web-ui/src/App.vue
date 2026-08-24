@@ -269,7 +269,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
 </script>
 
 <template>
-  <div class="app-backdrop min-h-screen">
+  <div class="min-h-screen bg-neutral-50">
     <ToastStack />
 
     <LoginView v-if="!loggedIn" :error="loginError" :loading="loading.login || loading.register" @submit="login"
@@ -278,13 +278,13 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
     <template v-else>
       <AppHeader :username="username" :is-admin="isAdmin" :view="view" @logout="logout" @navigate="setView" />
 
-      <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <main class="min-h-[calc(100vh-6.75rem)] w-full px-6 py-6 lg:px-8">
         <template v-if="view === 'dashboard'">
           <div class="space-y-6">
             <div class="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-                <p class="mt-1 text-sm text-slate-500">
+                <h1 class="text-2xl font-semibold tracking-tight text-neutral-900">Dashboard</h1>
+                <p class="mt-1 text-sm text-neutral-500">
                   {{
                     isAdmin
                       ? 'Administrator view of every PostgreSQL cluster on the platform.'
@@ -295,21 +295,20 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
 
               <p
                 v-if="lastUpdated"
-                class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs text-slate-500 ring-1 ring-slate-200"
+                class="text-xs text-neutral-500"
               >
-                <span class="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                 Updated {{ updatedLabel }}
               </p>
             </div>
 
             <PlatformStats :instances="instances" />
 
-            <div class="grid items-start gap-6 lg:grid-cols-5">
-              <div class="lg:sticky lg:top-20 lg:col-span-2">
+            <div class="grid items-start gap-6 xl:grid-cols-12">
+              <div class="xl:sticky xl:top-28 xl:col-span-4">
                 <CreateInstanceForm ref="createForm" :loading="loading.create" @submit="createInstance" />
               </div>
 
-              <div class="lg:col-span-3">
+              <div class="xl:col-span-8">
                 <InstanceList
                   :instances="instances"
                   :loading="loading.list"
@@ -334,7 +333,7 @@ onBeforeUnmount(() => clearInterval(refreshTimer))
           @refresh="loadLogWindow()"
         />
 
-        <footer class="mt-8 border-t border-slate-200 pt-6 text-xs text-slate-400">
+        <footer class="mt-8 border-t border-neutral-200 pt-4 text-xs text-neutral-400">
           PostgreSQL PaaS · CloudNativePG on Kubernetes · list refreshes every 10 seconds
         </footer>
       </main>

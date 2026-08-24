@@ -20,23 +20,23 @@ const props = defineProps({
 
 const variants = {
   primary:
-    'bg-indigo-600 text-white shadow-sm shadow-indigo-600/25 hover:bg-indigo-500 active:bg-indigo-700 focus-visible:outline-indigo-600',
+    'bg-neutral-900 text-white hover:bg-neutral-800 active:bg-neutral-950 focus-visible:outline-neutral-900',
   secondary:
-    'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 shadow-sm hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-slate-400',
-  ghost: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-slate-400',
+    'bg-white text-neutral-700 ring-1 ring-inset ring-neutral-200 hover:bg-neutral-50 hover:text-neutral-950 focus-visible:outline-neutral-400',
+  ghost: 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-neutral-400',
   danger:
-    'bg-white text-rose-600 ring-1 ring-inset ring-rose-200 shadow-sm hover:bg-rose-50 focus-visible:outline-rose-500',
+    'bg-white text-rose-700 ring-1 ring-inset ring-rose-200 shadow-sm hover:bg-rose-50 focus-visible:outline-rose-500',
   'danger-solid':
-    'bg-rose-600 text-white shadow-sm shadow-rose-600/25 hover:bg-rose-500 active:bg-rose-700 focus-visible:outline-rose-600',
+    'bg-rose-700 text-white shadow-sm shadow-rose-700/20 hover:bg-rose-600 active:bg-rose-800 focus-visible:outline-rose-700',
 }
 
 const sizes = {
-  sm: 'h-8 px-3 text-xs',
+  sm: 'h-8 px-3 text-xs tracking-wide',
   md: 'h-10 px-4 text-sm',
 }
 
 const classes = computed(() => [
-  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition',
+  'inline-flex items-center justify-center gap-2 rounded-md font-semibold transition duration-150',
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
   'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
   variants[props.variant],

@@ -4,9 +4,9 @@ import { useToasts } from '@/composables/useToasts'
 const { toasts, dismiss } = useToasts()
 
 const styles = {
-  success: 'text-emerald-600',
-  error: 'text-rose-600',
-  info: 'text-indigo-600',
+  success: 'text-emerald-700',
+  error: 'text-rose-700',
+  info: 'text-neutral-700',
 }
 
 const icons = {
@@ -32,7 +32,7 @@ const icons = {
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-lg shadow-slate-900/10"
+        class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 shadow-lg shadow-neutral-900/10"
       >
         <svg
           class="mt-0.5 size-5 shrink-0"
@@ -47,7 +47,7 @@ const icons = {
         <span class="flex-1">{{ toast.message }}</span>
 
         <button
-          class="shrink-0 rounded-md p-0.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          class="shrink-0 rounded-md p-0.5 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
           aria-label="Dismiss notification"
           @click="dismiss(toast.id)"
         >

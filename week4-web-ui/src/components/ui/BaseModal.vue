@@ -26,7 +26,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/25 p-4 backdrop-blur-sm sm:items-center"
+      class="fixed inset-0 z-40 flex items-end justify-center bg-neutral-950/40 p-4 backdrop-blur-sm sm:items-center"
       role="dialog"
       aria-modal="true"
       @click.self="emit('close')"
@@ -37,21 +37,21 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         enter-from-class="translate-y-3 scale-95 opacity-0 sm:translate-y-0"
       >
         <div
-          class="w-full rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15"
+          class="w-full rounded-lg border border-neutral-200 bg-white shadow-2xl shadow-neutral-950/20"
           :class="size === 'xl' ? 'max-w-3xl' : 'max-w-lg'"
         >
           <header
-            class="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4"
+            class="flex items-start justify-between gap-4 border-b border-neutral-200/80 px-5 py-4"
           >
             <div class="min-w-0">
-              <h2 class="text-base font-semibold text-slate-900">{{ title }}</h2>
-              <p v-if="subtitle" class="mt-0.5 truncate font-mono text-xs text-slate-500">
+              <h2 class="text-lg font-semibold text-neutral-900">{{ title }}</h2>
+              <p v-if="subtitle" class="mt-0.5 truncate font-mono text-xs text-neutral-500">
                 {{ subtitle }}
               </p>
             </div>
 
             <button
-              class="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              class="rounded-md p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
               aria-label="Close dialog"
               @click="emit('close')"
             >
@@ -69,7 +69,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
           <footer
             v-if="$slots.footer"
-            class="flex justify-end gap-2 rounded-b-2xl border-t border-slate-100 bg-slate-50 px-5 py-4"
+            class="flex justify-end gap-2 rounded-b-xl border-t border-neutral-200/80 bg-white/70 px-5 py-4"
           >
             <slot name="footer" />
           </footer>

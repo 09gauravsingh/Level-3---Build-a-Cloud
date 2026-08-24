@@ -6,23 +6,14 @@ defineProps({
 </script>
 
 <template>
-  <section class="rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-900/5">
+  <section class="overflow-hidden rounded-lg border border-neutral-200 bg-white">
     <header
       v-if="title || $slots.actions"
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4"
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-5 py-3"
     >
-      <div class="flex items-center gap-3">
-        <span
-          v-if="$slots.icon"
-          class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"
-        >
-          <slot name="icon" />
-        </span>
-
-        <div>
-          <h2 class="text-sm font-semibold text-slate-900">{{ title }}</h2>
-          <p v-if="subtitle" class="mt-0.5 text-xs text-slate-500">{{ subtitle }}</p>
-        </div>
+      <div>
+        <h2 class="text-sm font-semibold text-neutral-900">{{ title }}</h2>
+        <p v-if="subtitle" class="mt-0.5 text-xs text-neutral-500">{{ subtitle }}</p>
       </div>
 
       <div class="flex items-center gap-2">

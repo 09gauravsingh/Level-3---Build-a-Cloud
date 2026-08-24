@@ -66,7 +66,7 @@ spec:
 
       containers:
         - name: api
-          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.10
+          image: registry.onstackit.cloud/gaurav-paas-20a60c06/week3-paas-api:v1.4.11
           imagePullPolicy: IfNotPresent
 
           ports:
