@@ -1,4 +1,7 @@
-# Small production-sensible Loki deployment.
+#this yaml run a small single-instance Loki inside Kubernetes, store logs persistently in STACKIT Object Storage, 
+#keep them for 7 days, and expose Loki only internally inside the cluster.
+
+# Small production-sensible Loki deployment into the cluster.
 deploymentMode: Monolithic
 
 loki:

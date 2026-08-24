@@ -5,12 +5,7 @@
 # → creates and maintains the API Pod(it runs the GO API server)
 # Service
 # → provides a stable network address for the Pod
-
 # Pods can be replaced and receive new IP addresses. The Service remains stable.
-
-
-
-
 # Holds the SQLite file with the registered users, so accounts survive
 # a Pod restart or a new image rollout.
 apiVersion: v1
@@ -121,7 +116,7 @@ spec:
               path: /healthz
               port: http
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 3000
 
           # Kubernetes sends traffic only when the API is ready.
           readinessProbe:
@@ -129,7 +124,7 @@ spec:
               path: /healthz
               port: http
             initialDelaySeconds: 3
-            periodSeconds: 5
+            periodSeconds: 3000
 
           resources:
             requests:
